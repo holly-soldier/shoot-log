@@ -4,59 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>射撃手簿</title>
+    <link rel="manifest" href="manifest.json">
     <style>
+        /* 横スクロール防止と基本設定 */
+        *, *::before, *::after { box-sizing: border-box; }
         :root { --primary: #2c3e50; --secondary: #34495e; --accent: #e74c3c; --bg: #f4f6f7; --border: #bdc3c7; }
-        body { margin: 0; font-family: sans-serif; background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; color: #333; }
-        header { background: var(--primary); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; z-index: 10;}
-        header h1 { margin: 0; font-size: 1.2rem; }
+        body { margin: 0; padding: 0; font-family: sans-serif; background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow-x: hidden; color: #333; }
+        
+        header { background: var(--primary); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; z-index: 10; flex-shrink: 0;}
+        header h1 { margin: 0; font-size: 1.1rem; }
         button { padding: 8px 12px; border: none; border-radius: 4px; background: var(--secondary); color: white; cursor: pointer; font-size: 0.9rem; }
         button:active { opacity: 0.8; }
         button.action-btn { background: var(--accent); font-weight: bold; }
         
-        .view { display: none; flex: 1; overflow-y: auto; flex-direction: column; }
+        .view { display: none; flex: 1; overflow-y: auto; overflow-x: hidden; flex-direction: column; width: 100%; }
         .view.active { display: flex; }
         
         /* ホーム画面 */
         #view-home { padding: 15px; }
         .session-card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 10px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .session-card h3 { margin: 0 0 5px 0; }
+        .session-card h3 { margin: 0 0 5px 0; font-size: 1.1rem;}
         .session-card p { margin: 0; font-size: 0.85rem; color: #666; }
         
         /* フォーム系 */
-        .form-section { background: white; padding: 15px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
-        .form-group { margin-bottom: 12px; }
+        .form-section { background: white; padding: 15px; margin-bottom: 10px; border-bottom: 1px solid var(--border); width: 100%; }
+        .form-group { margin-bottom: 12px; width: 100%; }
         .form-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; color: #555; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; font-size: 1rem; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
         
         /* メイン画面 (Canvas) */
-        #canvas-container { height: 45vh; position: relative; background: #fff; border-bottom: 2px solid var(--border); touch-action: none; flex-shrink: 0;}
+        #canvas-container { height: 45vh; position: relative; background: #fff; border-bottom: 2px solid var(--border); touch-action: none; flex-shrink: 0; width: 100%;}
         canvas { display: block; width: 100%; height: 100%; }
         .canvas-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; }
         .canvas-tools button { background: rgba(255,255,255,0.9); color: #333; border: 1px solid #ccc; }
         .canvas-tools button.active-mode { background: var(--accent); color: white; border: none; }
+        .basic-info-btn { position: absolute; top: 10px; left: 10px; background: rgba(44, 62, 80, 0.9) !important; color: white !important; border: none !important; }
 
         /* メイン画面 (下部コントロール) */
-        #control-panel { flex: 1; overflow-y: auto; padding: 15px; background: var(--bg); }
-        .group-tabs { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        #control-panel { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 15px; background: var(--bg); width: 100%; }
+        .group-tabs { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; width: 100%; }
         .group-tab { padding: 8px 16px; background: #e0e0e0; color: #333; border-radius: 20px; white-space: nowrap; transition: 0.2s; }
         .group-tab.active { background: var(--primary); color: white; }
         
-        .data-list { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 15px; }
-        .data-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.95rem;}
+        .data-list { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 15px; width: 100%; }
+        .data-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.95rem; }
         .data-row:last-child { border-bottom: none; }
         .mpi-row { font-weight: bold; color: var(--accent); background: #fdf2f2; padding: 10px; border-radius: 4px; margin-top: 5px; }
-        
-        .adjustment-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 15px; text-align: center; }
-        .adjustment-grid input { text-align: center; padding: 8px; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1 id="header-title">射撃手簿</h1>
-    <div id="header-actions">
-        </div>
+    <h1 id="header-title">射撃手簿 v26.06.08</h1>
+    <div id="header-actions"></div>
 </header>
 
 <div id="view-home" class="view active">
@@ -64,6 +65,8 @@
     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
         <button onclick="exportCSV()" style="flex: 1; background: #27ae60;">CSV出力</button>
         <button onclick="exportJSON()" style="flex: 1; background: #8e44ad;">JSON出力</button>
+        <button onclick="document.getElementById('import-json').click()" style="flex: 1; background: #f39c12;">読込</button>
+        <input type="file" id="import-json" accept=".json" style="display: none;" onchange="importJSON(event)">
     </div>
     <h3 style="margin-bottom: 10px;">過去の記録</h3>
     <div id="session-list"></div>
@@ -72,13 +75,11 @@
 <div id="view-basic-info" class="view">
     <div class="form-section">
         <div class="form-group"><label>タイトル</label><input type="text" id="bi-title"></div>
-        <div class="grid-2">
-            <div class="form-group"><label>射撃日時</label><input type="datetime-local" id="bi-datetime"></div>
-            <div class="form-group"><label>場所（射場）</label><input type="text" id="bi-location"></div>
-        </div>
+        <div class="form-group"><label>射撃日時</label><input type="datetime-local" id="bi-datetime"></div>
+        <div class="form-group"><label>場所（射場）</label><input type="text" id="bi-location"></div>
         <div class="grid-2">
             <div class="form-group"><label>射群</label><input type="text" id="bi-group" placeholder="例: 第1射群"></div>
-            <div class="form-group"><label>的番号</label><input type="text" id="bi-target-num" placeholder="例: 5号的"></div>
+            <div class="form-group"><label>的番号</label><input type="text" id="bi-target-num" placeholder="例: 5的"></div>
         </div>
     </div>
     <div class="form-section">
@@ -97,7 +98,7 @@
             <div class="form-group"><label>的の種類</label>
                 <select id="bi-target-type">
                     <option value="circle">円形的 (120/80/40)</option>
-                    <option value="silhouette">シルエット的（簡易）</option>
+                    <option value="silhouette">シルエット的</option>
                 </select>
             </div>
             <div class="form-group"><label>銃の種類</label><input type="text" id="bi-firearm"></div>
@@ -111,13 +112,14 @@
         </div>
     </div>
     <div style="padding: 15px;">
-        <button class="action-btn" style="width: 100%; padding: 15px;" onclick="goToMainView()">射撃結果の入力へ進む</button>
+        <button class="action-btn" style="width: 100%; padding: 15px;" onclick="goToMainView()">射撃結果の入力へ（保存）</button>
     </div>
 </div>
 
 <div id="view-main" class="view">
     <div id="canvas-container">
         <canvas id="targetCanvas"></canvas>
+        <button class="basic-info-btn" onclick="editBasicInfo()">設定確認</button>
         <div class="canvas-tools">
             <button id="btn-mode-tap" onclick="toggleTapMode()">タップ入力: OFF</button>
             <button onclick="resetCanvasView()">視点リセット</button>
@@ -132,20 +134,10 @@
                 <div class="form-group" style="margin:0;"><label>X (cm)</label><input type="number" id="input-x" step="0.1"></div>
                 <div class="form-group" style="margin:0;"><label>Y (cm)</label><input type="number" id="input-y" step="0.1"></div>
             </div>
-            <button class="action-btn" style="width: 100%; margin-top: 10px;" onclick="addShotFromInput()">座標をプロット</button>
+            <button id="btn-add-update" class="action-btn" style="width: 100%; margin-top: 10px;" onclick="addOrUpdateShot()">座標をプロット</button>
         </div>
 
         <div class="data-list" id="data-list-container"></div>
-
-        <div class="form-section">
-            <label style="font-size: 0.85rem; font-weight: bold;">クリック調整（このグループを撃つ前の修正量）</label>
-            <div class="adjustment-grid">
-                <div>右<input type="number" id="adj-r" onchange="saveAdjustment()"></div>
-                <div>左<input type="number" id="adj-l" onchange="saveAdjustment()"></div>
-                <div>中<input type="number" id="adj-c" onchange="saveAdjustment()"></div>
-                <div>下<input type="number" id="adj-b" onchange="saveAdjustment()"></div>
-            </div>
-        </div>
 
         <div class="form-section">
             <div class="form-group"><label>良好な事項</label><textarea id="eval-good" rows="2" onchange="saveEvaluation()"></textarea></div>
@@ -156,19 +148,17 @@
 </div>
 
 <script>
-    // ================= アプリケーション状態 =================
     let savedSessions = JSON.parse(localStorage.getItem('shootLogSessions')) || [];
     let currentSession = null;
     let currentGroupId = null;
     let isTapInputMode = false;
+    let editingShotIndex = -1; // -1: 新規追加, 0以上: 編集対象インデックス
 
-    // 的のプリセット定義
     const TARGET_PRESETS = {
         "circle": { name: "円形的", ppc: 4, draw: drawCircleTarget },
         "silhouette": { name: "シルエット的", ppc: 4, draw: drawSilhouetteTarget }
     };
 
-    // ================= 画面遷移ロジック =================
     function showView(viewId, title, headerHtml = '') {
         document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
         document.getElementById(viewId).classList.add('active');
@@ -177,14 +167,14 @@
     }
 
     function renderHome() {
-        showView('view-home', '射撃手簿');
+        showView('view-home', '射撃手簿 v26.06.08');
         const listEl = document.getElementById('session-list');
         listEl.innerHTML = '';
         savedSessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(session => {
             const card = document.createElement('div');
             card.className = 'session-card';
             card.innerHTML = `<h3>${session.title || '無題の記録'}</h3>
-                              <p>${new Date(session.basicInfo.dateTime).toLocaleString()} | ${session.basicInfo.location || '場所未設定'}</p>`;
+                              <p>${session.basicInfo.dateTime ? new Date(session.basicInfo.dateTime).toLocaleString() : ''} | ${session.basicInfo.location || '場所未設定'}</p>`;
             card.onclick = () => loadSession(session.id);
             listEl.appendChild(card);
         });
@@ -200,42 +190,43 @@
             createdAt: new Date().toISOString(),
             title: `${localDateTime.split('T')[0].replace(/-/g, '')}_射撃記録`,
             basicInfo: { dateTime: localDateTime, location: '', group: '', targetNum: '', weather: '', temp: '', wind: '', lighting: '', distance: '', targetType: 'circle', firearm: '', sight: 'アイアン' },
-            groups: [ { id: 'G1', name: 'G1', preAdjustment: {r:0, l:0, c:0, b:0}, shots: [], mpi: {x:0, y:0} } ],
+            groups: [ { id: 'G1', name: 'G1', shots: [], mpi: {x:0, y:0} } ],
             evaluation: { goodPoints: '', improvementPoints: '', remarks: '' }
         };
         
-        // フォーム初期化
-        ['title','location','group','target-num','weather','temp','wind','lighting','distance','firearm','good','bad','remarks'].forEach(id => {
-            const el = document.getElementById(id.startsWith('eval') ? id : `bi-${id}`);
-            if(el) el.value = '';
-        });
-        document.getElementById('bi-title').value = currentSession.title;
-        document.getElementById('bi-datetime').value = localDateTime;
-        
+        populateBasicInfoForm();
         showView('view-basic-info', '基本情報の入力', `<button onclick="renderHome()">戻る</button>`);
     }
 
     function loadSession(id) {
         currentSession = savedSessions.find(s => s.id === id);
         currentGroupId = currentSession.groups[0].id;
-        
-        // フォーム復元
-        document.getElementById('bi-title').value = currentSession.title;
-        document.getElementById('bi-datetime').value = currentSession.basicInfo.dateTime;
-        document.getElementById('bi-location').value = currentSession.basicInfo.location;
-        document.getElementById('bi-group').value = currentSession.basicInfo.group;
-        document.getElementById('bi-target-num').value = currentSession.basicInfo.targetNum;
-        document.getElementById('bi-target-type').value = currentSession.basicInfo.targetType;
-        // 他項目の復元（省略・必要に応じて追加）
-        document.getElementById('eval-good').value = currentSession.evaluation.goodPoints || '';
-        document.getElementById('eval-bad').value = currentSession.evaluation.improvementPoints || '';
-        document.getElementById('eval-remarks').value = currentSession.evaluation.remarks || '';
-
+        populateBasicInfoForm();
         goToMainView();
     }
 
+    function editBasicInfo() {
+        populateBasicInfoForm();
+        showView('view-basic-info', '基本情報の確認・編集', `<button onclick="goToMainView()">戻る</button>`);
+    }
+
+    function populateBasicInfoForm() {
+        ['title','location','group','target-num','weather','temp','wind','lighting','distance','firearm','good','bad','remarks'].forEach(id => {
+            const el = document.getElementById(id.startsWith('eval') ? id : `bi-${id}`);
+            if(el) el.value = '';
+        });
+        document.getElementById('bi-title').value = currentSession.title;
+        document.getElementById('bi-datetime').value = currentSession.basicInfo.dateTime || '';
+        document.getElementById('bi-location').value = currentSession.basicInfo.location || '';
+        document.getElementById('bi-group').value = currentSession.basicInfo.group || '';
+        document.getElementById('bi-target-num').value = currentSession.basicInfo.targetNum || '';
+        document.getElementById('bi-target-type').value = currentSession.basicInfo.targetType || 'circle';
+        document.getElementById('eval-good').value = currentSession.evaluation.goodPoints || '';
+        document.getElementById('eval-bad').value = currentSession.evaluation.improvementPoints || '';
+        document.getElementById('eval-remarks').value = currentSession.evaluation.remarks || '';
+    }
+
     function goToMainView() {
-        // 基本情報の保存
         currentSession.title = document.getElementById('bi-title').value;
         currentSession.basicInfo = {
             dateTime: document.getElementById('bi-datetime').value,
@@ -243,11 +234,11 @@
             group: document.getElementById('bi-group').value,
             targetNum: document.getElementById('bi-target-num').value,
             targetType: document.getElementById('bi-target-type').value,
-            // ...その他の値
         };
         
         if(!currentGroupId) currentGroupId = currentSession.groups[0].id;
-        showView('view-main', '結果入力', `<button class="action-btn" onclick="saveAndExit()">保存して終了</button>`);
+        editingShotIndex = -1; resetInputState();
+        showView('view-main', '結果入力', `<button class="action-btn" onclick="saveAndExit()">保存・終了</button>`);
         resizeCanvas();
         updateMainUI();
     }
@@ -262,35 +253,39 @@
         renderHome();
     }
 
-    // ================= データ操作ロジック =================
+    // ================= データ・UI更新ロジック =================
     function updateMainUI() {
         const group = currentSession.groups.find(g => g.id === currentGroupId);
         
-        // タブ生成
         const tabsCnt = document.getElementById('group-tabs-container');
         tabsCnt.innerHTML = '';
         currentSession.groups.forEach(g => {
             const btn = document.createElement('button');
             btn.className = `group-tab ${g.id === currentGroupId ? 'active' : ''}`;
             btn.textContent = g.name;
-            btn.onclick = () => { currentGroupId = g.id; updateMainUI(); };
+            btn.onclick = () => { currentGroupId = g.id; editingShotIndex = -1; resetInputState(); updateMainUI(); };
             tabsCnt.appendChild(btn);
         });
         const addBtn = document.createElement('button');
         addBtn.className = 'group-tab'; addBtn.textContent = '＋追加';
         addBtn.onclick = () => {
             const n = currentSession.groups.length + 1;
-            const newG = { id: 'G'+n, name: 'G'+n, preAdjustment: {r:0, l:0, c:0, b:0}, shots: [], mpi: {x:0, y:0} };
+            const newG = { id: 'G'+n, name: 'G'+n, shots: [], mpi: {x:0, y:0} };
             currentSession.groups.push(newG);
-            currentGroupId = newG.id; updateMainUI();
+            currentGroupId = newG.id; editingShotIndex = -1; resetInputState(); updateMainUI();
         };
         tabsCnt.appendChild(addBtn);
 
-        // リスト描画
         const listCnt = document.getElementById('data-list-container');
         listCnt.innerHTML = group.shots.map((s, i) => 
-            `<div class="data-row"><span>No.${i+1}</span><span>X: ${s.x} / Y: ${s.y}</span>
-            <button onclick="removeShot(${i})" style="padding:2px 8px; background:#e74c3c; font-size:0.8rem;">削除</button></div>`
+            `<div class="data-row ${editingShotIndex === i ? 'mpi-row' : ''}">
+                <span style="width: 50px;">No.${i+1}</span>
+                <span style="flex:1; text-align:center;">X: ${s.x} / Y: ${s.y}</span>
+                <div>
+                    <button onclick="editShot(${i})" style="padding:4px 8px; background:#f39c12; color:white; font-size:0.8rem; margin-right:5px;">編集</button>
+                    <button onclick="removeShot(${i})" style="padding:4px 8px; background:#e74c3c; color:white; font-size:0.8rem;">削除</button>
+                </div>
+            </div>`
         ).join('');
         if(group.shots.length > 0) {
             listCnt.innerHTML += `<div class="data-row mpi-row"><span>平均弾着点(MPI)</span><span>X: ${group.mpi.x} / Y: ${group.mpi.y}</span></div>`;
@@ -298,35 +293,51 @@
             listCnt.innerHTML = `<div style="text-align:center; padding:10px; color:#999;">弾痕がありません</div>`;
         }
 
-        // クリック調整値の反映
-        document.getElementById('adj-r').value = group.preAdjustment.r;
-        document.getElementById('adj-l').value = group.preAdjustment.l;
-        document.getElementById('adj-c').value = group.preAdjustment.c;
-        document.getElementById('adj-b').value = group.preAdjustment.b;
-
         drawCanvas();
     }
 
-    function addShot(x, y) {
+    function addOrUpdateShot() {
+        const x = parseFloat(document.getElementById('input-x').value);
+        const y = parseFloat(document.getElementById('input-y').value);
+        if(isNaN(x) || isNaN(y)) return;
+
         const group = currentSession.groups.find(g => g.id === currentGroupId);
-        group.shots.push({ x: Math.round(x*10)/10, y: Math.round(y*10)/10 });
+        if (editingShotIndex >= 0) {
+            group.shots[editingShotIndex] = { x: Math.round(x*10)/10, y: Math.round(y*10)/10 };
+        } else {
+            group.shots.push({ x: Math.round(x*10)/10, y: Math.round(y*10)/10 });
+        }
+        
+        editingShotIndex = -1;
+        resetInputState();
         calcMPI(group);
         updateMainUI();
     }
 
-    function addShotFromInput() {
-        const x = parseFloat(document.getElementById('input-x').value);
-        const y = parseFloat(document.getElementById('input-y').value);
-        if(!isNaN(x) && !isNaN(y)) {
-            addShot(x, y);
-            document.getElementById('input-x').value = ''; document.getElementById('input-y').value = '';
-        }
+    function editShot(index) {
+        editingShotIndex = index;
+        const group = currentSession.groups.find(g => g.id === currentGroupId);
+        document.getElementById('input-x').value = group.shots[index].x;
+        document.getElementById('input-y').value = group.shots[index].y;
+        document.getElementById('btn-add-update').textContent = "座標を更新";
+        document.getElementById('btn-add-update').style.background = "#f39c12";
+        updateMainUI();
     }
 
     function removeShot(index) {
         const group = currentSession.groups.find(g => g.id === currentGroupId);
         group.shots.splice(index, 1);
+        if(editingShotIndex === index) { editingShotIndex = -1; resetInputState(); }
+        else if (editingShotIndex > index) { editingShotIndex--; }
         calcMPI(group); updateMainUI();
+    }
+
+    function resetInputState() {
+        document.getElementById('input-x').value = '';
+        document.getElementById('input-y').value = '';
+        const btn = document.getElementById('btn-add-update');
+        btn.textContent = "座標をプロット";
+        btn.style.background = "var(--accent)";
     }
 
     function calcMPI(group) {
@@ -334,16 +345,6 @@
         const sumX = group.shots.reduce((sum, s) => sum + s.x, 0);
         const sumY = group.shots.reduce((sum, s) => sum + s.y, 0);
         group.mpi = { x: Math.round((sumX/group.shots.length)*10)/10, y: Math.round((sumY/group.shots.length)*10)/10 };
-    }
-
-    function saveAdjustment() {
-        const group = currentSession.groups.find(g => g.id === currentGroupId);
-        group.preAdjustment = {
-            r: parseFloat(document.getElementById('adj-r').value) || 0,
-            l: parseFloat(document.getElementById('adj-l').value) || 0,
-            c: parseFloat(document.getElementById('adj-c').value) || 0,
-            b: parseFloat(document.getElementById('adj-b').value) || 0
-        };
     }
 
     function saveEvaluation() {
@@ -365,7 +366,15 @@
     }
 
     function resetCanvasView() {
-        transform.scale = 1;
+        if(!currentSession) return;
+        const preset = TARGET_PRESETS[currentSession.basicInfo.targetType] || TARGET_PRESETS["circle"];
+        
+        // 120cmの的(半径60cm)が画面の短い辺の80%に収まるようにスケールを自動計算
+        const requiredRadiusCm = 65; 
+        const minDimension = Math.min(canvas.width, canvas.height);
+        const calculatedScale = (minDimension * 0.4) / (requiredRadiusCm * preset.ppc);
+
+        transform.scale = calculatedScale;
         transform.offsetX = canvas.width / 2;
         transform.offsetY = canvas.height / 2;
         drawCanvas();
@@ -387,7 +396,7 @@
     }
 
     function drawSilhouetteTarget(ppc) {
-        ctx.strokeRect(-25 * ppc, -50 * ppc, 50 * ppc, 100 * ppc); // 簡易シルエット枠(50x100)
+        ctx.strokeRect(-25 * ppc, -50 * ppc, 50 * ppc, 100 * ppc);
         ctx.beginPath(); ctx.moveTo(0, -60 * ppc); ctx.lineTo(0, 60 * ppc);
         ctx.moveTo(-35 * ppc, 0); ctx.lineTo(35 * ppc, 0); ctx.stroke();
     }
@@ -406,20 +415,23 @@
         ctx.strokeStyle = '#333';
         preset.draw(ppc);
 
-        // 全グループの描画（選択中以外は半透明グレー）
         currentSession.groups.forEach(group => {
             const isActive = (group.id === currentGroupId);
             group.shots.forEach((s, idx) => {
                 const px = s.x * ppc, py = -s.y * ppc;
                 ctx.beginPath(); ctx.arc(px, py, 4 / transform.scale, 0, Math.PI * 2);
-                ctx.fillStyle = isActive ? 'red' : 'rgba(150,150,150,0.5)';
+                
+                // 編集中の弾痕はハイライト（オレンジ）、それ以外でアクティブなら赤
+                let pointColor = 'rgba(150,150,150,0.5)';
+                if (isActive) pointColor = (editingShotIndex === idx) ? '#f39c12' : 'red';
+                
+                ctx.fillStyle = pointColor;
                 ctx.fill();
                 if(isActive) {
                     ctx.fillStyle = '#000'; ctx.font = `${12/transform.scale}px sans-serif`;
                     ctx.fillText(idx+1, px+(6/transform.scale), py-(6/transform.scale));
                 }
             });
-            // MPIの描画
             if(isActive && group.shots.length > 0) {
                 const mx = group.mpi.x * ppc, my = -group.mpi.y * ppc, sz = 6 / transform.scale;
                 ctx.beginPath(); ctx.moveTo(mx-sz, my-sz); ctx.lineTo(mx+sz, my+sz);
@@ -430,7 +442,6 @@
         ctx.restore();
     }
 
-    // --- インタラクション ---
     function handlePointerDown(x, y) { lastTouch = {x, y}; isDragging = true; }
     function handlePointerMove(x, y) {
         if(!isDragging || isTapInputMode) return;
@@ -442,20 +453,21 @@
     window.addEventListener('mouseup', () => isDragging = false);
     window.addEventListener('mousemove', e => handlePointerMove(e.clientX, e.clientY));
     
-    // タップ入力処理
     canvas.addEventListener('click', e => {
         if(!isTapInputMode) return;
         const rect = canvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left, clickY = e.clientY - rect.top;
         const preset = TARGET_PRESETS[currentSession.basicInfo.targetType];
         
-        // 逆アフィン変換でCanvas上の中心座標からのcmを計算
         const canvasX = (clickX - transform.offsetX) / transform.scale;
         const canvasY = (clickY - transform.offsetY) / transform.scale;
-        addShot(canvasX / preset.ppc, -canvasY / preset.ppc); // Yは反転
+        
+        // タップした座標を入力欄にセットしてプロット処理
+        document.getElementById('input-x').value = Math.round((canvasX / preset.ppc)*10)/10;
+        document.getElementById('input-y').value = Math.round((-canvasY / preset.ppc)*10)/10;
+        addOrUpdateShot();
     });
 
-    // スマホタッチ処理
     canvas.addEventListener('touchstart', e => {
         if(e.touches.length === 1 && !isTapInputMode) { handlePointerDown(e.touches[0].clientX, e.touches[0].clientY); }
         else if(e.touches.length === 2) {
@@ -473,29 +485,64 @@
     });
     canvas.addEventListener('touchend', () => isDragging = false);
 
-    // ================= エクスポート機能 =================
+    // ================= エクスポート / インポート機能 =================
     function exportJSON() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedSessions, null, 2));
         const a = document.createElement('a'); a.href = dataStr; a.download = "shoot_log_backup.json"; a.click();
     }
 
+    function importJSON(event) {
+        const file = event.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if(Array.isArray(importedData)) {
+                    // IDの重複を避けて結合
+                    importedData.forEach(newSession => {
+                        if(!savedSessions.find(s => s.id === newSession.id)) {
+                            savedSessions.push(newSession);
+                        }
+                    });
+                    localStorage.setItem('shootLogSessions', JSON.stringify(savedSessions));
+                    renderHome();
+                    alert("データの読み込みが完了しました。");
+                }
+            } catch (err) { alert("無効なJSONファイルです。"); }
+            event.target.value = ''; // Reset input
+        };
+        reader.readAsText(file);
+    }
+
     function exportCSV() {
-        let csv = "SessionID,Title,Date,Location,TargetNum,Group,ShotNo,X_cm,Y_cm,MPI_X,MPI_Y,Adj_R,Adj_L,Adj_C,Adj_B\n";
+        let csv = "SessionID,Title,Date,Location,TargetNum,Group,ShotNo,X_cm,Y_cm,MPI_X,MPI_Y\n";
         savedSessions.forEach(session => {
-            // 文字列内のカンマ等による崩れを防ぐためダブルクォートで囲む
             const safeStr = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
             session.groups.forEach(group => {
                 group.shots.forEach((shot, i) => {
-                    csv += `${safeStr(session.id)},${safeStr(session.title)},${safeStr(session.basicInfo.dateTime)},${safeStr(session.basicInfo.location)},${safeStr(session.basicInfo.targetNum)},${safeStr(group.name)},${i+1},${shot.x},${shot.y},${group.mpi.x},${group.mpi.y},${group.preAdjustment.r},${group.preAdjustment.l},${group.preAdjustment.c},${group.preAdjustment.b}\n`;
+                    csv += `${safeStr(session.id)},${safeStr(session.title)},${safeStr(session.basicInfo.dateTime)},${safeStr(session.basicInfo.location)},${safeStr(session.basicInfo.targetNum)},${safeStr(group.name)},${i+1},${shot.x},${shot.y},${group.mpi.x},${group.mpi.y}\n`;
                 });
             });
         });
-        // BOM付きでエクスポート(Excelでの文字化け防止)
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], {type: "text/csv;charset=utf-8"});
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "shoot_log_export.csv"; a.click();
     }
 
-    // 初期化起動
+    // --- Service Worker 登録とバックグラウンド更新処理 ---
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+            reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        console.log('新しいバージョンが利用可能です。次回起動時に適用されます。');
+                    }
+                };
+            };
+        });
+    }
+
     renderHome();
 </script>
 </body>
