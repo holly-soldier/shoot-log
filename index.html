@@ -6,7 +6,7 @@
     <title>射撃手簿</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        /* 横スクロール防止と基本設定 */
+        /* 基本設定 */
         *, *::before, *::after { box-sizing: border-box; }
         :root { --primary: #2c3e50; --secondary: #34495e; --accent: #e74c3c; --bg: #f4f6f7; --border: #bdc3c7; }
         body { margin: 0; padding: 0; font-family: sans-serif; background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow-x: hidden; color: #333; }
@@ -31,13 +31,8 @@
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; color: #555; }
         .form-group input, .form-group select, .form-group textarea { 
-            width: 100%; 
-            max-width: 100%; 
-            padding: 10px; 
-            border: 1px solid var(--border); 
-            border-radius: 4px; 
-            font-size: 1rem; 
-            -webkit-appearance: none;
+            width: 100%; max-width: 100%; padding: 10px; border: 1px solid var(--border); 
+            border-radius: 4px; font-size: 1rem; -webkit-appearance: none;
         }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         
@@ -49,22 +44,40 @@
         .canvas-tools button.active-mode { background: var(--accent); color: white; border: none; }
         .basic-info-btn { position: absolute; top: 10px; left: 10px; background: rgba(44, 62, 80, 0.9) !important; color: white !important; border: none !important; }
 
+        /* Canvas内 オーバーレイ情報 */
+        .canvas-info { position: absolute; pointer-events: none; background: rgba(255,255,255,0.75); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; color: #333; z-index: 5; font-weight: bold; }
+        .canvas-info.bottom-left { bottom: 10px; left: 10px; }
+        .canvas-info.bottom-right { bottom: 10px; right: 10px; text-align: right; }
+
         /* メイン画面 (下部コントロール) */
         #control-panel { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 15px; background: var(--bg); width: 100%; }
         .group-tabs { display: flex; gap: 8px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 5px; width: 100%; }
         .group-tab { padding: 8px 16px; background: #e0e0e0; color: #333; border-radius: 20px; white-space: nowrap; transition: 0.2s; }
         .group-tab.active { background: var(--primary); color: white; }
-        
         .data-list { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 15px; width: 100%; }
         .data-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.95rem; }
         .data-row:last-child { border-bottom: none; }
         .mpi-row { font-weight: bold; color: var(--accent); background: #fdf2f2; padding: 10px; border-radius: 4px; margin-top: 5px; }
+
+        /* ================= 印刷用レイアウト ================= */
+        #print-area { display: none; }
+        @media print {
+            @page { margin: 15mm; }
+            body { background: white; height: auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #000; }
+            header, #view-home, #view-basic-info, #view-main { display: none !important; }
+            #print-area { display: block !important; width: 100%; }
+            .print-label { font-weight: bold; font-size: 0.85rem; color: #555; }
+            .print-val { font-size: 1rem; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.9rem; text-align: center; }
+            th, td { border: 1px solid #333; padding: 6px; }
+            th { background: #eee; }
+        }
     </style>
 </head>
 <body>
 
 <header>
-    <h1 id="header-title">射撃手簿 v26.06.08_3</h1>
+    <h1 id="header-title">射撃手簿 v26.06.09</h1>
     <div id="header-actions"></div>
 </header>
 
@@ -132,11 +145,19 @@
             <button id="btn-mode-tap" onclick="toggleTapMode()">タップ入力: OFF</button>
             <button onclick="resetCanvasView()">視点リセット</button>
         </div>
+        
+        <div class="canvas-info bottom-left">
+            <div id="ov-date"></div>
+            <div id="ov-loc"></div>
+        </div>
+        <div class="canvas-info bottom-right">
+            <div id="ov-dist"></div>
+            <div id="ov-gun"></div>
+        </div>
     </div>
 
     <div id="control-panel">
         <div class="group-tabs" id="group-tabs-container"></div>
-        
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 15px;">
             <button onclick="renameCurrentGroup()" style="background: var(--secondary); font-size: 0.8rem; padding: 6px 12px;">名前の変更</button>
             <button onclick="deleteCurrentGroup()" style="background: var(--accent); font-size: 0.8rem; padding: 6px 12px;">グループを削除</button>
@@ -160,6 +181,31 @@
     </div>
 </div>
 
+<div id="print-area">
+    <h2 id="p-title" style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 5px; margin-top: 0;"></h2>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+        <div><span class="print-label">日時:</span> <span class="print-val" id="p-date"></span></div>
+        <div><span class="print-label">場所:</span> <span class="print-val" id="p-location"></span></div>
+        <div><span class="print-label">射群:</span> <span class="print-val" id="p-group"></span></div>
+        <div><span class="print-label">的番号:</span> <span class="print-val" id="p-target"></span></div>
+        <div><span class="print-label">環境:</span> <span class="print-val" id="p-env"></span></div>
+        <div><span class="print-label">機材:</span> <span class="print-val" id="p-equip"></span></div>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 15px;">
+        <img id="p-img" style="max-width: 100%; height: 350px; object-fit: contain; border: 1px solid #ccc; background: white;">
+    </div>
+
+    <div id="p-shots" style="margin-bottom: 15px;"></div>
+
+    <div style="border-top: 2px solid #333; padding-top: 10px;">
+        <div style="margin-bottom: 5px;"><span class="print-label">良好な事項:</span><br><span id="p-good" style="white-space: pre-wrap;"></span></div>
+        <div style="margin-bottom: 5px;"><span class="print-label">改善を要する事項:</span><br><span id="p-bad" style="white-space: pre-wrap;"></span></div>
+        <div><span class="print-label">備考:</span><br><span id="p-remarks" style="white-space: pre-wrap;"></span></div>
+    </div>
+</div>
+
 <script>
     let savedSessions = JSON.parse(localStorage.getItem('shootLogSessions')) || [];
     let currentSession = null;
@@ -180,7 +226,7 @@
     }
 
     function renderHome() {
-        showView('view-home', '射撃手簿 v26.06.08_3');
+        showView('view-home', '射撃手簿 v26.06.09');
         const listEl = document.getElementById('session-list');
         listEl.innerHTML = '';
         savedSessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(session => {
@@ -209,7 +255,6 @@
             createdAt: new Date().toISOString(),
             title: `${localDateTime.split('T')[0].replace(/-/g, '')}_射撃記録`,
             basicInfo: { dateTime: localDateTime, location: '', group: '', targetNum: '', weather: '', temp: '', wind: '', lighting: '', distance: '', targetType: 'circle', firearm: '', sight: 'アイアン' },
-            // バグ修正：IDにDate.now()を含めて一意性を確保
             groups: [ { id: 'G_' + Date.now(), name: 'G1', shots: [], mpi: {x:0, y:0} } ],
             evaluation: { goodPoints: '', improvementPoints: '', remarks: '' }
         };
@@ -221,16 +266,11 @@
     function loadSession(id) {
         currentSession = savedSessions.find(s => s.id === id);
         
-        // --- ID重複バグの修復処理 ---
         const seenIds = new Set();
         currentSession.groups.forEach((g, i) => {
-            if(seenIds.has(g.id)) {
-                // 重複を見つけたら一意のIDに振り直す
-                g.id = g.id + '_' + Date.now() + i;
-            }
+            if(seenIds.has(g.id)) { g.id = g.id + '_' + Date.now() + i; }
             seenIds.add(g.id);
         });
-        // --------------------------
 
         currentGroupId = currentSession.groups[0].id;
         populateBasicInfoForm();
@@ -274,11 +314,23 @@
             group: document.getElementById('bi-group').value,
             targetNum: document.getElementById('bi-target-num').value,
             targetType: document.getElementById('bi-target-type').value,
+            distance: document.getElementById('bi-distance').value,
+            firearm: document.getElementById('bi-firearm').value,
+            sight: document.getElementById('bi-sight').value,
+            weather: document.getElementById('bi-weather').value,
+            temp: document.getElementById('bi-temp').value,
+            wind: document.getElementById('bi-wind').value,
+            lighting: document.getElementById('bi-lighting').value
         };
         
         if(!currentGroupId) currentGroupId = currentSession.groups[0].id;
         editingShotIndex = -1; resetInputState();
-        showView('view-main', '結果入力', `<button class="action-btn" onclick="saveAndExit()">保存・終了</button>`);
+        
+        // ヘッダーに印刷ボタンと保存ボタンを配置
+        showView('view-main', '結果入力', `
+            <button onclick="executePrint()" style="margin-right: 8px; background: #27ae60;">🖨️ 印刷</button>
+            <button class="action-btn" onclick="saveAndExit()">保存・終了</button>
+        `);
         resizeCanvas();
         updateMainUI();
     }
@@ -297,6 +349,12 @@
     function updateMainUI() {
         const group = currentSession.groups.find(g => g.id === currentGroupId);
         
+        // キャンバス余白の基本情報更新
+        document.getElementById('ov-date').textContent = currentSession.basicInfo.dateTime ? currentSession.basicInfo.dateTime.replace('T', ' ') : '';
+        document.getElementById('ov-loc').textContent = currentSession.basicInfo.location || '';
+        document.getElementById('ov-dist').textContent = currentSession.basicInfo.distance ? `射距離: ${currentSession.basicInfo.distance}m` : '';
+        document.getElementById('ov-gun').textContent = currentSession.basicInfo.firearm ? `銃: ${currentSession.basicInfo.firearm}` : '';
+
         const tabsCnt = document.getElementById('group-tabs-container');
         tabsCnt.innerHTML = '';
         currentSession.groups.forEach(g => {
@@ -310,7 +368,6 @@
         addBtn.className = 'group-tab'; addBtn.textContent = '＋追加';
         addBtn.onclick = () => {
             const n = currentSession.groups.length + 1;
-            // バグ修正：新しく追加するグループにも一意のIDを付与
             const newG = { id: 'G_' + Date.now(), name: 'G'+n, shots: [], mpi: {x:0, y:0} };
             currentSession.groups.push(newG);
             currentGroupId = newG.id; editingShotIndex = -1; resetInputState(); updateMainUI();
@@ -467,6 +524,11 @@
     function drawCanvas() {
         if(!currentSession) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // JPEGエクスポート時に背景が透過（黒）にならないよう、白で塗りつぶす
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
         ctx.save();
         ctx.translate(transform.offsetX, transform.offsetY);
         ctx.scale(transform.scale, transform.scale);
@@ -546,6 +608,62 @@
     });
     canvas.addEventListener('touchend', () => isDragging = false);
 
+    // ================= 印刷機能 =================
+    function executePrint() {
+        if(!currentSession) return;
+        saveEvaluation(); // 最新のテキスト入力を保存
+        
+        document.getElementById('p-title').textContent = currentSession.title;
+        document.getElementById('p-date').textContent = (currentSession.basicInfo.dateTime || '').replace('T', ' ');
+        document.getElementById('p-location').textContent = currentSession.basicInfo.location || '---';
+        document.getElementById('p-group').textContent = currentSession.basicInfo.group || '---';
+        document.getElementById('p-target').textContent = currentSession.basicInfo.targetNum || '---';
+        
+        const env = [currentSession.basicInfo.weather, currentSession.basicInfo.temp ? currentSession.basicInfo.temp+'℃' : '', currentSession.basicInfo.wind ? currentSession.basicInfo.wind+'m/s' : ''].filter(Boolean).join(' / ');
+        document.getElementById('p-env').textContent = env || '---';
+        
+        const equip = [currentSession.basicInfo.distance ? currentSession.basicInfo.distance+'m' : '', currentSession.basicInfo.firearm, currentSession.basicInfo.sight].filter(Boolean).join(' / ');
+        document.getElementById('p-equip').textContent = equip || '---';
+        
+        // 印刷用の標準スケールで的の画像を生成
+        const s_scale = transform.scale;
+        const s_ox = transform.offsetX;
+        const s_oy = transform.offsetY;
+        resetCanvasView();
+        document.getElementById('p-img').src = canvas.toDataURL('image/jpeg', 1.0);
+        
+        // 元の視点に復元
+        transform.scale = s_scale;
+        transform.offsetX = s_ox;
+        transform.offsetY = s_oy;
+        drawCanvas();
+        
+        // 選択中のグループの着弾データをテーブル化
+        const group = currentSession.groups.find(g => g.id === currentGroupId);
+        let tableHtml = `<div style="font-weight:bold; margin:10px 0 5px; text-align:left;">【${group.name}】着弾データ</div>`;
+        tableHtml += `<table><tr><th>No.</th><th>X (cm)</th><th>Y (cm)</th></tr>`;
+        group.shots.forEach((s, i) => {
+            tableHtml += `<tr><td>${i+1}</td><td>${s.x}</td><td>${s.y}</td></tr>`;
+        });
+        if(group.shots.length > 0) {
+            tableHtml += `<tr style="font-weight:bold; background:#f4f4f4;"><td>MPI</td><td>${group.mpi.x}</td><td>${group.mpi.y}</td></tr>`;
+        } else {
+            tableHtml += `<tr><td colspan="3">データなし</td></tr>`;
+        }
+        tableHtml += `</table>`;
+        document.getElementById('p-shots').innerHTML = tableHtml;
+        
+        // 評価項目
+        document.getElementById('p-good').textContent = document.getElementById('eval-good').value || '---';
+        document.getElementById('p-bad').textContent = document.getElementById('eval-bad').value || '---';
+        document.getElementById('p-remarks').textContent = document.getElementById('eval-remarks').value || '---';
+        
+        // 画像の描画を待ってから印刷ダイアログを起動
+        setTimeout(() => {
+            window.print();
+        }, 300);
+    }
+
     // ================= エクスポート / インポート機能 =================
     function exportJSON() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedSessions, null, 2));
@@ -561,9 +679,7 @@
                 const importedData = JSON.parse(e.target.result);
                 if(Array.isArray(importedData)) {
                     importedData.forEach(newSession => {
-                        if(!savedSessions.find(s => s.id === newSession.id)) {
-                            savedSessions.push(newSession);
-                        }
+                        if(!savedSessions.find(s => s.id === newSession.id)) { savedSessions.push(newSession); }
                     });
                     localStorage.setItem('shootLogSessions', JSON.stringify(savedSessions));
                     renderHome();
@@ -589,6 +705,7 @@
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "shoot_log_export.csv"; a.click();
     }
 
+    // PWA Service Worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').then(reg => {
             reg.onupdatefound = () => {
