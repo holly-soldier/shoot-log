@@ -23,15 +23,23 @@
         /* ホーム画面 */
         #view-home { padding: 15px; }
         .session-card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 10px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .session-card h3 { margin: 0 0 5px 0; font-size: 1.1rem;}
+        .session-card h3 { margin: 0 0 5px 0; font-size: 1.1rem; word-break: break-all; padding-right: 10px; }
         .session-card p { margin: 0; font-size: 0.85rem; color: #666; }
         
-        /* フォーム系 */
-        .form-section { background: white; padding: 15px; margin-bottom: 10px; border-bottom: 1px solid var(--border); width: 100%; }
-        .form-group { margin-bottom: 12px; width: 100%; }
+        /* フォーム系 (はみ出し修正: width:100%を削除し、ブロック要素のデフォルト幅に依存させる) */
+        .form-section { background: white; padding: 15px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
+        .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; color: #555; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+        .form-group input, .form-group select, .form-group textarea { 
+            width: 100%; 
+            max-width: 100%; 
+            padding: 10px; 
+            border: 1px solid var(--border); 
+            border-radius: 4px; 
+            font-size: 1rem; 
+            -webkit-appearance: none; /* iOS Safari特有のスタイルをリセット */
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         
         /* メイン画面 (Canvas) */
         #canvas-container { height: 45vh; position: relative; background: #fff; border-bottom: 2px solid var(--border); touch-action: none; flex-shrink: 0; width: 100%;}
@@ -43,7 +51,7 @@
 
         /* メイン画面 (下部コントロール) */
         #control-panel { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 15px; background: var(--bg); width: 100%; }
-        .group-tabs { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; width: 100%; }
+        .group-tabs { display: flex; gap: 8px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 5px; width: 100%; }
         .group-tab { padding: 8px 16px; background: #e0e0e0; color: #333; border-radius: 20px; white-space: nowrap; transition: 0.2s; }
         .group-tab.active { background: var(--primary); color: white; }
         
@@ -56,7 +64,7 @@
 <body>
 
 <header>
-    <h1 id="header-title">射撃手簿 v26.06.08</h1>
+    <h1 id="header-title">射撃手簿 v26.06.08_2</h1>
     <div id="header-actions"></div>
 </header>
 
@@ -129,6 +137,11 @@
     <div id="control-panel">
         <div class="group-tabs" id="group-tabs-container"></div>
         
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 15px;">
+            <button onclick="renameCurrentGroup()" style="background: var(--secondary); font-size: 0.8rem; padding: 6px 12px;">名前の変更</button>
+            <button onclick="deleteCurrentGroup()" style="background: var(--accent); font-size: 0.8rem; padding: 6px 12px;">グループを削除</button>
+        </div>
+        
         <div class="form-section" style="padding: 10px; border-radius: 8px; margin-bottom: 15px;">
             <div class="grid-2" style="align-items: end;">
                 <div class="form-group" style="margin:0;"><label>X (cm)</label><input type="number" id="input-x" step="0.1"></div>
@@ -152,7 +165,7 @@
     let currentSession = null;
     let currentGroupId = null;
     let isTapInputMode = false;
-    let editingShotIndex = -1; // -1: 新規追加, 0以上: 編集対象インデックス
+    let editingShotIndex = -1; 
 
     const TARGET_PRESETS = {
         "circle": { name: "円形的", ppc: 4, draw: drawCircleTarget },
@@ -167,15 +180,23 @@
     }
 
     function renderHome() {
-        showView('view-home', '射撃手簿 v26.06.08');
+        showView('view-home', '射撃手簿 v26.06.08_2');
         const listEl = document.getElementById('session-list');
         listEl.innerHTML = '';
         savedSessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(session => {
             const card = document.createElement('div');
             card.className = 'session-card';
-            card.innerHTML = `<h3>${session.title || '無題の記録'}</h3>
-                              <p>${session.basicInfo.dateTime ? new Date(session.basicInfo.dateTime).toLocaleString() : ''} | ${session.basicInfo.location || '場所未設定'}</p>`;
-            card.onclick = () => loadSession(session.id);
+            
+            // 全体削除ボタンをリストに配置
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div style="flex:1;" onclick="loadSession('${session.id}')">
+                        <h3>${session.title || '無題の記録'}</h3>
+                        <p>${session.basicInfo.dateTime ? new Date(session.basicInfo.dateTime).toLocaleString() : ''} | ${session.basicInfo.location || '場所未設定'}</p>
+                    </div>
+                    <button onclick="deleteSession('${session.id}')" style="background:#e74c3c; color:white; padding:6px 12px; margin-left:10px;">削除</button>
+                </div>
+            `;
             listEl.appendChild(card);
         });
     }
@@ -203,6 +224,15 @@
         currentGroupId = currentSession.groups[0].id;
         populateBasicInfoForm();
         goToMainView();
+    }
+    
+    // 射撃記録全体の削除
+    function deleteSession(id) {
+        if (confirm("この射撃記録を完全に削除してもよろしいですか？")) {
+            savedSessions = savedSessions.filter(s => s.id !== id);
+            localStorage.setItem('shootLogSessions', JSON.stringify(savedSessions));
+            renderHome();
+        }
     }
 
     function editBasicInfo() {
@@ -295,6 +325,32 @@
 
         drawCanvas();
     }
+    
+    // グループ名変更
+    function renameCurrentGroup() {
+        const group = currentSession.groups.find(g => g.id === currentGroupId);
+        const newName = prompt("新しいグループ名を入力してください:", group.name);
+        if (newName && newName.trim() !== "") {
+            group.name = newName.trim();
+            updateMainUI();
+        }
+    }
+    
+    // グループ削除
+    function deleteCurrentGroup() {
+        if (currentSession.groups.length <= 1) {
+            alert("最後のグループは削除できません。");
+            return;
+        }
+        if (confirm("現在のグループとその中の弾痕データをすべて削除しますか？")) {
+            currentSession.groups = currentSession.groups.filter(g => g.id !== currentGroupId);
+            // 削除後、最初のグループをアクティブにする
+            currentGroupId = currentSession.groups[0].id;
+            editingShotIndex = -1;
+            resetInputState();
+            updateMainUI();
+        }
+    }
 
     function addOrUpdateShot() {
         const x = parseFloat(document.getElementById('input-x').value);
@@ -369,7 +425,6 @@
         if(!currentSession) return;
         const preset = TARGET_PRESETS[currentSession.basicInfo.targetType] || TARGET_PRESETS["circle"];
         
-        // 120cmの的(半径60cm)が画面の短い辺の80%に収まるようにスケールを自動計算
         const requiredRadiusCm = 65; 
         const minDimension = Math.min(canvas.width, canvas.height);
         const calculatedScale = (minDimension * 0.4) / (requiredRadiusCm * preset.ppc);
@@ -421,7 +476,6 @@
                 const px = s.x * ppc, py = -s.y * ppc;
                 ctx.beginPath(); ctx.arc(px, py, 4 / transform.scale, 0, Math.PI * 2);
                 
-                // 編集中の弾痕はハイライト（オレンジ）、それ以外でアクティブなら赤
                 let pointColor = 'rgba(150,150,150,0.5)';
                 if (isActive) pointColor = (editingShotIndex === idx) ? '#f39c12' : 'red';
                 
@@ -462,7 +516,6 @@
         const canvasX = (clickX - transform.offsetX) / transform.scale;
         const canvasY = (clickY - transform.offsetY) / transform.scale;
         
-        // タップした座標を入力欄にセットしてプロット処理
         document.getElementById('input-x').value = Math.round((canvasX / preset.ppc)*10)/10;
         document.getElementById('input-y').value = Math.round((-canvasY / preset.ppc)*10)/10;
         addOrUpdateShot();
@@ -499,7 +552,6 @@
             try {
                 const importedData = JSON.parse(e.target.result);
                 if(Array.isArray(importedData)) {
-                    // IDの重複を避けて結合
                     importedData.forEach(newSession => {
                         if(!savedSessions.find(s => s.id === newSession.id)) {
                             savedSessions.push(newSession);
@@ -510,7 +562,7 @@
                     alert("データの読み込みが完了しました。");
                 }
             } catch (err) { alert("無効なJSONファイルです。"); }
-            event.target.value = ''; // Reset input
+            event.target.value = ''; 
         };
         reader.readAsText(file);
     }
@@ -529,7 +581,6 @@
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "shoot_log_export.csv"; a.click();
     }
 
-    // --- Service Worker 登録とバックグラウンド更新処理 ---
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').then(reg => {
             reg.onupdatefound = () => {
