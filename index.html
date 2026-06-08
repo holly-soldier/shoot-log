@@ -26,7 +26,7 @@
         .session-card h3 { margin: 0 0 5px 0; font-size: 1.1rem; word-break: break-all; padding-right: 10px; }
         .session-card p { margin: 0; font-size: 0.85rem; color: #666; }
         
-        /* フォーム系 (はみ出し修正: width:100%を削除し、ブロック要素のデフォルト幅に依存させる) */
+        /* フォーム系 */
         .form-section { background: white; padding: 15px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; color: #555; }
@@ -37,7 +37,7 @@
             border: 1px solid var(--border); 
             border-radius: 4px; 
             font-size: 1rem; 
-            -webkit-appearance: none; /* iOS Safari特有のスタイルをリセット */
+            -webkit-appearance: none;
         }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         
@@ -64,7 +64,7 @@
 <body>
 
 <header>
-    <h1 id="header-title">射撃手簿 v26.06.08_2</h1>
+    <h1 id="header-title">射撃手簿 v26.06.08_3</h1>
     <div id="header-actions"></div>
 </header>
 
@@ -180,14 +180,12 @@
     }
 
     function renderHome() {
-        showView('view-home', '射撃手簿 v26.06.08_2');
+        showView('view-home', '射撃手簿 v26.06.08_3');
         const listEl = document.getElementById('session-list');
         listEl.innerHTML = '';
         savedSessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(session => {
             const card = document.createElement('div');
             card.className = 'session-card';
-            
-            // 全体削除ボタンをリストに配置
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                     <div style="flex:1;" onclick="loadSession('${session.id}')">
@@ -211,7 +209,8 @@
             createdAt: new Date().toISOString(),
             title: `${localDateTime.split('T')[0].replace(/-/g, '')}_射撃記録`,
             basicInfo: { dateTime: localDateTime, location: '', group: '', targetNum: '', weather: '', temp: '', wind: '', lighting: '', distance: '', targetType: 'circle', firearm: '', sight: 'アイアン' },
-            groups: [ { id: 'G1', name: 'G1', shots: [], mpi: {x:0, y:0} } ],
+            // バグ修正：IDにDate.now()を含めて一意性を確保
+            groups: [ { id: 'G_' + Date.now(), name: 'G1', shots: [], mpi: {x:0, y:0} } ],
             evaluation: { goodPoints: '', improvementPoints: '', remarks: '' }
         };
         
@@ -221,12 +220,23 @@
 
     function loadSession(id) {
         currentSession = savedSessions.find(s => s.id === id);
+        
+        // --- ID重複バグの修復処理 ---
+        const seenIds = new Set();
+        currentSession.groups.forEach((g, i) => {
+            if(seenIds.has(g.id)) {
+                // 重複を見つけたら一意のIDに振り直す
+                g.id = g.id + '_' + Date.now() + i;
+            }
+            seenIds.add(g.id);
+        });
+        // --------------------------
+
         currentGroupId = currentSession.groups[0].id;
         populateBasicInfoForm();
         goToMainView();
     }
     
-    // 射撃記録全体の削除
     function deleteSession(id) {
         if (confirm("この射撃記録を完全に削除してもよろしいですか？")) {
             savedSessions = savedSessions.filter(s => s.id !== id);
@@ -300,7 +310,8 @@
         addBtn.className = 'group-tab'; addBtn.textContent = '＋追加';
         addBtn.onclick = () => {
             const n = currentSession.groups.length + 1;
-            const newG = { id: 'G'+n, name: 'G'+n, shots: [], mpi: {x:0, y:0} };
+            // バグ修正：新しく追加するグループにも一意のIDを付与
+            const newG = { id: 'G_' + Date.now(), name: 'G'+n, shots: [], mpi: {x:0, y:0} };
             currentSession.groups.push(newG);
             currentGroupId = newG.id; editingShotIndex = -1; resetInputState(); updateMainUI();
         };
@@ -326,7 +337,6 @@
         drawCanvas();
     }
     
-    // グループ名変更
     function renameCurrentGroup() {
         const group = currentSession.groups.find(g => g.id === currentGroupId);
         const newName = prompt("新しいグループ名を入力してください:", group.name);
@@ -336,7 +346,6 @@
         }
     }
     
-    // グループ削除
     function deleteCurrentGroup() {
         if (currentSession.groups.length <= 1) {
             alert("最後のグループは削除できません。");
@@ -344,7 +353,6 @@
         }
         if (confirm("現在のグループとその中の弾痕データをすべて削除しますか？")) {
             currentSession.groups = currentSession.groups.filter(g => g.id !== currentGroupId);
-            // 削除後、最初のグループをアクティブにする
             currentGroupId = currentSession.groups[0].id;
             editingShotIndex = -1;
             resetInputState();
