@@ -75,9 +75,9 @@
     </style>
 </head>
 <body>
-
+    
 <header>
-    <h1 id="header-title">射撃手簿 v26.06.10_3</h1>
+    <h1 id="header-title">射撃手簿 <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); font-weight: normal; margin-left: 5px;">v26.06.10</span></h1>
     <div id="header-actions"></div>
 </header>
 
@@ -366,16 +366,19 @@
     };
 
     // ================= 共通システムロジック =================
-
+    
     function showView(viewId, title, headerHtml = '') {
         document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
         document.getElementById(viewId).classList.add('active');
-        document.getElementById('header-title').textContent = title;
+        // ↓ここを textContent から innerHTML に変更します
+        document.getElementById('header-title').innerHTML = title;
         document.getElementById('header-actions').innerHTML = headerHtml;
     }
 
     function renderHome() {
-        showView('view-home', '射撃手簿 v26.06.09_5');
+        // ↓タイトルの文字列をHTML付きのものに変更します
+        showView('view-home', '射撃手簿 <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); font-weight: normal; margin-left: 5px;">v26.06.10</span>');
+        
         const listEl = document.getElementById('session-list');
         listEl.innerHTML = '';
         savedSessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(session => {
