@@ -1,5 +1,5 @@
 // キャッシュのバージョンをコードの更新に合わせて変更する
-const CACHE_NAME = 'shooting-log-v26.06.09_4';
+const CACHE_NAME = 'shooting-log-v26.06.09_5';
 const urlsToCache = [
   './index.html',
   './manifest.json'
