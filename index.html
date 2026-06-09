@@ -77,7 +77,7 @@
 <body>
 
 <header>
-    <h1 id="header-title">射撃手簿 v26.06.09_5</h1>
+    <h1 id="header-title">射撃手簿 v26.06.10</h1>
     <div id="header-actions"></div>
 </header>
 
@@ -219,37 +219,39 @@
     let isTapInputMode = false;
     let editingShotIndex = -1; 
 
-    // ================= 寸法に基づく的の描画機能（数学モデル） =================
+        // ================= 寸法に基づく的の描画機能（数学モデル修正版） =================
     
-    // 【A的 / F的象】図面寸法に基づく完全な幾何描画
+    // 【A的 / F的象】
     function drawATarget(ctx, ppc, d3, d4, d5, fw, fh) {
         const s = ppc / 10; // ppcは1cmあたりpx。sは1mmあたりpx
         const r5 = d5 / 2;
         
-        // --- 基準点と各曲線の計算 ---
-        // 5点圏の下端とF的象の底辺が一致する (Y軸下向きCanvas座標系)
-        const Y_base = r5; 
+        // 5点圏の下端とF的象の底辺が一致
+        const baseY = r5; 
+        const topY = baseY - fh;
         
-        // 図面のプロポーションから導出される首・頭の半径と中心
-        const R_head = fw / 6;
-        const R_neck = fw * 17 / 66;
-        const X_neck_c = fw * 8 / 33;
-        const D_y = (2 * fw) / Math.sqrt(33); // 首の中心と頭の中心のY軸距離
-        
-        const Y_head_c = Y_base - fh + R_head;
-        const Y_neck_c = Y_head_c + D_y;
-        const alpha = Math.atan2(D_y, X_neck_c); // 接点の角度
-
-        // F的象の描画
+        // F的象の描画 (数式エラーが起きない堅牢なベジェ・二次曲線パス)
         ctx.fillStyle = '#222';
         ctx.beginPath();
-        ctx.moveTo(-fw/2 * s, Y_base * s);
-        ctx.lineTo(fw/2 * s, Y_base * s);
-        ctx.lineTo(fw/2 * s, Y_neck_c * s); // 右側の垂直線
-        ctx.arc(X_neck_c * s, Y_neck_c * s, R_neck * s, 0, -Math.PI + alpha, true); // 右肩のくぼみ (R170相当)
-        ctx.arc(0, Y_head_c * s, R_head * s, alpha, -Math.PI - alpha, true); // 頭部 (R110相当)
-        ctx.arc(-X_neck_c * s, Y_neck_c * s, R_neck * s, -alpha, -Math.PI, false); // 左肩のくぼみ
-        ctx.lineTo(-fw/2 * s, Y_base * s); // 左側の垂直線
+        ctx.moveTo(-fw/2 * s, baseY * s);
+        ctx.lineTo(fw/2 * s, baseY * s);
+        
+        // 直線部分 (高さの約30%)
+        const straightH = fh * 0.3;
+        ctx.lineTo(fw/2 * s, (baseY - straightH) * s);
+        
+        // 頭部の半径 (幅の約18%)
+        const headR = fw * 0.18;
+        const headCY = topY + headR;
+        
+        // 右肩のカーブ
+        ctx.quadraticCurveTo(fw/2 * s, headCY * s, headR * s, headCY * s);
+        // 頭部の半円
+        ctx.arc(0, headCY * s, headR * s, 0, Math.PI, true);
+        // 左肩のカーブ
+        ctx.quadraticCurveTo(-fw/2 * s, headCY * s, -fw/2 * s, (baseY - straightH) * s);
+        
+        ctx.lineTo(-fw/2 * s, baseY * s);
         ctx.fill();
 
         // 3, 4, 5点圏の描画
@@ -277,32 +279,32 @@
         ctx.fillText("3", 0, (d3/2) * 0.8 * s);
     }
 
-    // 【E的 / 膝的】図面寸法(R170, R120, R80等)に基づく完全な幾何描画
+    // 【E的 / 膝的】
     function drawETarget(ctx, ppc) {
         const s = ppc / 10;
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 1.5;
 
-        // --- 外形線の計算パラメータ ---
-        const dy_neck = Math.sqrt(36400); 
-        const y_neck_c = dy_neck - 190; 
-        const theta = Math.atan2(dy_neck, 60); 
-        const dy_head = Math.sqrt(17875); 
-        const y_head_tan = 290 + dy_head; 
-        const phi = Math.atan2(dy_head, 105);
+        // 図面寸法(190.78mm等)から逆算した絶対座標 (破綻を防ぐ)
+        const y_sh = -100; // 右肩(R120)の中心Y
+        const y_nk = -290.78; // 首(R80)の中心Y
+        const y_head = -290; // 頭(R170)の中心Y
+        const y_head_top = -423.69; // 直線部とR170の接点Y
+        const ang_sh = Math.atan2(190.78, 60); // 約1.26 rad
+        const ang_hd = Math.atan2(133.69, 105); // 約0.90 rad
 
         // 外形の描画
         ctx.beginPath();
         ctx.moveTo(245 * s, 640 * s); // 右下
-        ctx.lineTo(245 * s, 190 * s); // 右ストレート
-        ctx.arc(125 * s, 190 * s, 120 * s, 0, -theta, true); // 右肩(R120)
-        ctx.arc(185 * s, -y_neck_c * s, 80 * s, Math.PI - theta, Math.PI, false); // 右首(R80)
-        ctx.lineTo(105 * s, -y_head_tan * s); // 頭部右ストレート
-        ctx.arc(0, -290 * s, 170 * s, -phi, -Math.PI + phi, true); // 頭部(R170)
-        ctx.lineTo(-105 * s, -y_neck_c * s); // 頭部左ストレート
-        ctx.arc(-185 * s, -y_neck_c * s, 80 * s, 0, theta, false); // 左首(R80)
-        ctx.arc(-125 * s, 190 * s, 120 * s, -Math.PI + theta, -Math.PI, true); // 左肩(R120)
-        ctx.lineTo(-245 * s, 640 * s); // 左ストレート
+        ctx.lineTo(245 * s, y_sh * s); // 右直線
+        ctx.arc(125 * s, y_sh * s, 120 * s, 0, -ang_sh, true); // 右肩(R120)
+        ctx.arc(185 * s, y_nk * s, 80 * s, Math.PI - ang_sh, Math.PI, false); // 右首(R80)
+        ctx.lineTo(105 * s, y_head_top * s); // 頭部右直線
+        ctx.arc(0, y_head * s, 170 * s, -ang_hd, -Math.PI + ang_hd, true); // 頭部(R170)
+        ctx.lineTo(-105 * s, y_nk * s); // 頭部左直線
+        ctx.arc(-185 * s, y_nk * s, 80 * s, 0, ang_sh, false); // 左首(R80)
+        ctx.arc(-125 * s, y_sh * s, 120 * s, -Math.PI + ang_sh, -Math.PI, true); // 左肩(R120)
+        ctx.lineTo(-245 * s, 640 * s); // 左直線
         ctx.closePath();
         ctx.stroke();
 
@@ -329,7 +331,7 @@
         ctx.moveTo(-25 * s, 0); ctx.lineTo(25 * s, 0);
         ctx.stroke();
         
-        // 得点数字（図面通りの配置）
+        // 得点数字
         ctx.fillStyle = '#666';
         ctx.font = `bold ${30 * s}px sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
