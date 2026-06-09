@@ -284,37 +284,37 @@
         ctx.fillText("4", 0, (d4/2) * 0.8 * s);
         ctx.fillText("3", 0, (d3/2) * 0.8 * s);
     }
-
     // 【E的 / 膝的】
     function drawETarget(ctx, ppc) {
         const s = ppc / 10;
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 1.5;
 
-        // 円を胴体の中心にするため、座標(0,0)はそのままに外形全体をシフト
-        // 7点圏の頂点(Y=-300)と肩のライン(y_sh)が同じ高さになるよう、y_offset を -200 に調整
-        const y_offset = -200; 
-        const y_sh = -100 + y_offset;          // -300 (肩の直線部の上端)
-        const y_nk = -290.78 + y_offset;       // -490.78
-        const y_head = -290 + y_offset;        // -490
-        const y_head_top = -423.69 + y_offset; // -623.69
-        const y_bottom = 640 + y_offset;       // 440
+        // 円を「もう少し上に」修正。
+        // 7点圏の頂点(Y=-300)が、肩のカーブの一番高い水平ライン(Y=-220+y_offset)と
+        // ピッタリ同じ高さになるように、y_offsetを -80 に調整しました。
+        const y_offset = -80; 
+        const y_sh = -100 + y_offset;          // -180
+        const y_nk = -290.78 + y_offset;       // -370.78
+        const y_head = -290 + y_offset;        // -370
+        const y_head_top = -423.69 + y_offset; // -503.69
+        const y_bottom = 640 + y_offset;       // 560
         
         const ang_sh = Math.atan2(190.78, 60); 
         const ang_hd = Math.atan2(133.69, 105); 
 
         // 外形の描画
         ctx.beginPath();
-        ctx.moveTo(245 * s, y_bottom * s); // 右下
-        ctx.lineTo(245 * s, y_sh * s); // 右直線
-        ctx.arc(125 * s, y_sh * s, 120 * s, 0, -ang_sh, true); // 右肩(R120)
-        ctx.arc(185 * s, y_nk * s, 80 * s, Math.PI - ang_sh, Math.PI, false); // 右首(R80)
-        ctx.lineTo(105 * s, y_head_top * s); // 頭部右直線
-        ctx.arc(0, y_head * s, 170 * s, -ang_hd, -Math.PI + ang_hd, true); // 頭部(R170)
-        ctx.lineTo(-105 * s, y_nk * s); // 頭部左直線
-        ctx.arc(-185 * s, y_nk * s, 80 * s, 0, ang_sh, false); // 左首(R80)
-        ctx.arc(-125 * s, y_sh * s, 120 * s, -Math.PI + ang_sh, -Math.PI, true); // 左肩(R120)
-        ctx.lineTo(-245 * s, y_bottom * s); // 左直線
+        ctx.moveTo(245 * s, y_bottom * s); 
+        ctx.lineTo(245 * s, y_sh * s); 
+        ctx.arc(125 * s, y_sh * s, 120 * s, 0, -ang_sh, true); 
+        ctx.arc(185 * s, y_nk * s, 80 * s, Math.PI - ang_sh, Math.PI, false); 
+        ctx.lineTo(105 * s, y_head_top * s); 
+        ctx.arc(0, y_head * s, 170 * s, -ang_hd, -Math.PI + ang_hd, true); 
+        ctx.lineTo(-105 * s, y_nk * s); 
+        ctx.arc(-185 * s, y_nk * s, 80 * s, 0, ang_sh, false); 
+        ctx.arc(-125 * s, y_sh * s, 120 * s, -Math.PI + ang_sh, -Math.PI, true); 
+        ctx.lineTo(-245 * s, y_bottom * s); 
         ctx.closePath();
         ctx.stroke();
 
@@ -323,7 +323,7 @@
             { r: 50, h: 25 },
             { r: 100, h: 50 },
             { r: 150, h: 75 },
-            { r: 200, h: 100 } // 7点圏: h(100) + r(200) で頂点はY=300(-300)となる
+            { r: 200, h: 100 } // 7点圏頂点は -(h+r) = -300
         ];
         rings.forEach(ring => {
             ctx.beginPath();
@@ -355,6 +355,8 @@
         ctx.fillText("8", 125 * s, 0); ctx.fillText("8", -125 * s, 0);
         ctx.fillText("7", 175 * s, 0); ctx.fillText("7", -175 * s, 0);
     }
+
+
 
     // プリセット定義 (単位はmm。表示スケールは displayRadiusCm に基づく)
     const TARGET_PRESETS = {
