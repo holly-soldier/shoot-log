@@ -77,7 +77,7 @@
 <body>
 
 <header>
-    <h1 id="header-title">射撃手簿 v26.06.09_3</h1>
+    <h1 id="header-title">射撃手簿 v26.06.09_4</h1>
     <div id="header-actions"></div>
 </header>
 
@@ -226,90 +226,142 @@
     // ================= 寸法に基づく的の描画機能 =================
     
     // 小黒点的・黒点的 (A) を描画する関数
-    // d3, d4, d5: 各点圏の直径(cm) / f_w, f_h: F的象の幅と高さ(cm)
-    function drawATarget(ctx, ppc, d3, d4, d5, f_w, f_h) {
-        const r3 = d3 / 2, r4 = d4 / 2, r5 = d5 / 2;
+    function drawATarget(ctx, ppc, d3, d4, d5, fw, fh) {
+        const s = ppc / 10; // ppcは「1cmあたりのpx数」。sは「1mmあたりのpx数」
         
-        // F的象 (黒いシルエット部分)
-        // 規定により「5点圏の外側とF的象の底辺を一致させる」ため、baseY = r5
-        ctx.fillStyle = '#333'; // 弾痕を見やすくするため少し明るい黒
+        // F的象 (黒いシルエット部分) の描画
+        const r5 = d5 / 2;
+        const baseY = r5; 
+        const topY = r5 - fh;
+        const headR = fw * 0.20; 
+        const headCenterY = topY + headR;
+        
+        ctx.fillStyle = '#222'; // 真っ黒ではなく視認性を持たせた黒
         ctx.beginPath();
-        const baseY = r5 * ppc; 
-        const topY = baseY - (f_h * ppc);
-        const shoulderY = baseY - (f_h * 0.45 * ppc); // 肩の高さ（概算）
-        const headW = f_w * 0.4 * ppc;
-        const bodyW = f_w * ppc;
+        ctx.moveTo(-fw/2 * s, baseY * s);
+        ctx.lineTo(fw/2 * s, baseY * s);
         
-        ctx.moveTo(-bodyW/2, baseY);
-        ctx.lineTo(bodyW/2, baseY);
-        ctx.lineTo(bodyW/2, shoulderY);
-        ctx.quadraticCurveTo(headW/2, shoulderY, headW/2, topY + headW/2);
-        ctx.arc(0, topY + headW/2, headW/2, 0, Math.PI, true);
-        ctx.quadraticCurveTo(-headW/2, shoulderY, -bodyW/2, shoulderY);
+        // 右側直線
+        const sideY = baseY - fh * 0.4;
+        ctx.lineTo(fw/2 * s, sideY * s);
+        
+        // 右肩カーブ
+        const neckX = headR * 0.95;
+        const neckY = headCenterY + headR * 0.7;
+        ctx.quadraticCurveTo(fw/2 * s, neckY * s, neckX * s, neckY * s);
+        
+        // 頭部カーブ
+        const neckAngle = Math.atan2(neckY - headCenterY, neckX);
+        ctx.arc(0, headCenterY * s, headR * s, neckAngle, Math.PI - neckAngle, true);
+        
+        // 左肩カーブ
+        ctx.quadraticCurveTo(-fw/2 * s, neckY * s, -fw/2 * s, sideY * s);
+        // 左側直線
+        ctx.lineTo(-fw/2 * s, baseY * s);
         ctx.fill();
 
-        // 3〜5点の円（見やすいように明るいグレーで描画）
-        ctx.strokeStyle = '#ddd';
+        // 得点圏の円（黒背景にも白背景にも見やすいグレー線）
+        ctx.strokeStyle = '#aaa'; 
         ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(0, 0, r5 * ppc, 0, Math.PI*2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(0, 0, r4 * ppc, 0, Math.PI*2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(0, 0, r3 * ppc, 0, Math.PI*2); ctx.stroke();
-
-        // 十字線
-        ctx.beginPath();
-        ctx.moveTo(0, -r3 * 1.1 * ppc); ctx.lineTo(0, r3 * 1.1 * ppc);
-        ctx.moveTo(-r3 * 1.1 * ppc, 0); ctx.lineTo(r3 * 1.1 * ppc, 0);
-        ctx.stroke();
-        
-        // 得点数字
-        ctx.fillStyle = '#ddd';
-        ctx.font = `${r5 * 0.4 * ppc}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText("5", 0, r5 * 0.4 * ppc);
-        ctx.fillText("4", 0, r4 * 0.8 * ppc);
-        ctx.fillText("3", 0, r3 * 0.8 * ppc);
-    }
-
-    // 膝的 (E的) を描画する関数
-    function drawETarget(ctx, ppc) {
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 1.5;
-        
-        // 規定寸法(cm)
-        const halfW = 24.5 * ppc; // 幅49cmの半分
-        const bottomY = 64 * ppc; // 10点中心から下へ64cm
-        const topY = -46 * ppc;   // 10点中心から上へ46cm (全高110cm)
-        const headHalfW = 10.5 * ppc; // 頭部幅21cmの半分
-        const shoulderY = -26 * ppc;  // 肩の高さ（概算）
-        
-        // 外形線
-        ctx.beginPath();
-        ctx.moveTo(-halfW, bottomY);
-        ctx.lineTo(halfW, bottomY);
-        ctx.lineTo(halfW, shoulderY + 10*ppc);
-        ctx.quadraticCurveTo(halfW, shoulderY, headHalfW, shoulderY - 10*ppc); // 右肩
-        ctx.lineTo(headHalfW, topY + headHalfW);
-        ctx.arc(0, topY + headHalfW, headHalfW, 0, Math.PI, true); // 頭の頂点
-        ctx.lineTo(-headHalfW, shoulderY - 10*ppc);
-        ctx.quadraticCurveTo(-halfW, shoulderY, -halfW, shoulderY + 10*ppc); // 左肩
-        ctx.closePath();
-        ctx.stroke();
-
-        // 7, 8, 9, 10点の円 (半径 20, 15, 10, 5 cm)
-        [20, 15, 10, 5].forEach(r => {
+        [d5, d4, d3].forEach(d => {
             ctx.beginPath();
-            ctx.arc(0, 0, r * ppc, 0, Math.PI * 2);
+            ctx.arc(0, 0, (d/2) * s, 0, Math.PI*2);
             ctx.stroke();
         });
 
         // 十字線
         ctx.beginPath();
-        ctx.moveTo(0, -25 * ppc); ctx.lineTo(0, 25 * ppc);
-        ctx.moveTo(-25 * ppc, 0); ctx.lineTo(25 * ppc, 0);
+        ctx.moveTo(0, -(d3/2) * 1.05 * s); ctx.lineTo(0, (d3/2) * 1.05 * s);
+        ctx.moveTo(-(d3/2) * 1.05 * s, 0); ctx.lineTo((d3/2) * 1.05 * s, 0);
         ctx.stroke();
+
+        // 得点数字
+        ctx.fillStyle = '#ccc';
+        ctx.font = `bold ${r5 * 0.5 * s}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText("5", 0, r5 * 0.6 * s);
+        ctx.fillStyle = '#555';
+        ctx.fillText("4", 0, (d4/2) * 0.8 * s);
+        ctx.fillText("3", 0, (d3/2) * 0.8 * s);
     }
 
-    // 古いデータ互換用の円形的・シルエット的
+    // 膝的 (E的) を描画する関数
+    function drawETarget(ctx, ppc) {
+        const s = ppc / 10;
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.5;
+
+        // --- 外形線の描画（公式のR170, R120, R80 に基づく幾何計算）---
+        ctx.beginPath();
+        ctx.moveTo(245 * s, 640 * s); // 右下角
+        ctx.lineTo(245 * s, -225 * s); // 右直線
+        
+        // 右肩 (R120)
+        const angTan1 = Math.atan2(-190.78, 60); 
+        ctx.arc(125 * s, -225 * s, 120 * s, 0, angTan1, true);
+        
+        // 右首 (R80)
+        const angTan2 = Math.atan2(76.31, -24); 
+        ctx.arc(185 * s, -415.78 * s, 80 * s, angTan2, Math.PI, false);
+        
+        // 頭部右直線
+        ctx.lineTo(105 * s, -423.69 * s);
+        
+        // 頭部 (R170)
+        const angHead1 = Math.atan2(-133.69, 105); 
+        const angHead2 = Math.atan2(-133.69, -105); 
+        ctx.arc(0, -290 * s, 170 * s, angHead1, angHead2, true);
+        
+        // 頭部左直線
+        ctx.lineTo(-105 * s, -415.78 * s);
+        
+        // 左首 (R80)
+        const angTan3 = Math.atan2(76.31, 24); 
+        ctx.arc(-185 * s, -415.78 * s, 80 * s, 0, angTan3, false);
+        
+        // 左肩 (R120)
+        const angTan4 = Math.atan2(-114.47, -36); 
+        ctx.arc(-125 * s, -225 * s, 120 * s, angTan4, -Math.PI, true);
+        
+        // 左直線
+        ctx.lineTo(-245 * s, 640 * s);
+        ctx.closePath();
+        ctx.stroke();
+
+        // --- 10, 9, 8, 7 得点圏 (小判型: 直線+半円) の描画 ---
+        const rings = [
+            { r: 50, dy: 25 },
+            { r: 100, dy: 50 },
+            { r: 150, dy: 75 },
+            { r: 200, dy: 100 }
+        ];
+        rings.forEach(ring => {
+            ctx.beginPath();
+            ctx.moveTo(ring.r * s, -ring.dy * s);
+            ctx.lineTo(ring.r * s, ring.dy * s);
+            ctx.arc(0, ring.dy * s, ring.r * s, 0, Math.PI, false);
+            ctx.lineTo(-ring.r * s, -ring.dy * s);
+            ctx.arc(0, -ring.dy * s, ring.r * s, Math.PI, 0, false);
+            ctx.stroke();
+        });
+
+        // 十字線
+        ctx.beginPath();
+        ctx.moveTo(0, -25 * s); ctx.lineTo(0, 25 * s);
+        ctx.moveTo(-25 * s, 0); ctx.lineTo(25 * s, 0);
+        ctx.stroke();
+        
+        // 得点数字の配置
+        ctx.fillStyle = '#555';
+        ctx.font = `bold ${30 * s}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText("10", 0, 0);
+        ctx.fillText("9", 0, -80 * s);
+        ctx.fillText("8", 0, -130 * s);
+        ctx.fillText("7", 0, -180 * s);
+    }
+
+    // 後方互換用
     function drawCircleTarget(ctx, ppc) {
         [60, 40, 20].forEach(r => { ctx.beginPath(); ctx.arc(0, 0, r * ppc, 0, Math.PI * 2); ctx.stroke(); });
         ctx.beginPath(); ctx.moveTo(0, -70 * ppc); ctx.lineTo(0, 70 * ppc); ctx.moveTo(-70 * ppc, 0); ctx.lineTo(70 * ppc, 0); ctx.stroke();
@@ -319,19 +371,18 @@
         ctx.beginPath(); ctx.moveTo(0, -60 * ppc); ctx.lineTo(0, 60 * ppc); ctx.moveTo(-35 * ppc, 0); ctx.lineTo(35 * ppc, 0); ctx.stroke();
     }
 
-    // プリセット定義 (displayRadiusCmは自動ズーム用の基準半径)
+    // プリセット定義 (単位はmm。表示スケールは displayRadiusCm に基づく)
     const TARGET_PRESETS = {
-        "a_300m": { name: "小黒点的 300m (A)", ppc: 4, draw: (ctx, ppc) => drawATarget(ctx, ppc, 120, 80, 40, 66, 48), displayRadiusCm: 65 },
-        "a_200m": { name: "小黒点的 200m (A)", ppc: 6, draw: (ctx, ppc) => drawATarget(ctx, ppc, 80, 53.2, 26.6, 44, 32), displayRadiusCm: 45 },
-        "a_100m": { name: "黒点的 100m (A)", ppc: 12, draw: (ctx, ppc) => drawATarget(ctx, ppc, 40, 26.6, 13.2, 22, 16), displayRadiusCm: 25 },
-        "a_25m":  { name: "黒点的 25m (A)", ppc: 40, draw: (ctx, ppc) => drawATarget(ctx, ppc, 10, 6.6, 3.2, 5.5, 4), displayRadiusCm: 6 },
-        "e_target": { name: "膝的 (E的)", ppc: 4, draw: (ctx, ppc) => drawETarget(ctx, ppc), displayRadiusCm: 65 },
-        // 過去データ互換用
+        "a_300m": { name: "小黒点的 300m (A)", ppc: 4, draw: (ctx, ppc) => drawATarget(ctx, ppc, 1200, 800, 400, 660, 480), displayRadiusCm: 65 },
+        "a_200m": { name: "小黒点的 200m (A)", ppc: 6, draw: (ctx, ppc) => drawATarget(ctx, ppc, 800, 532, 266, 440, 320), displayRadiusCm: 45 },
+        "a_100m": { name: "黒点的 100m (A)", ppc: 12, draw: (ctx, ppc) => drawATarget(ctx, ppc, 400, 266, 132, 220, 160), displayRadiusCm: 25 },
+        "a_25m":  { name: "黒点的 25m (A)", ppc: 40, draw: (ctx, ppc) => drawATarget(ctx, ppc, 100, 66, 32, 55, 40), displayRadiusCm: 6 },
+        "e_target": { name: "膝的 (E的)", ppc: 4, draw: (ctx, ppc) => drawETarget(ctx, ppc), displayRadiusCm: 70 },
         "circle": { name: "円形的", ppc: 4, draw: (ctx, ppc) => drawCircleTarget(ctx, ppc), displayRadiusCm: 65 },
         "silhouette": { name: "シルエット的", ppc: 4, draw: (ctx, ppc) => drawSilhouetteTarget(ctx, ppc), displayRadiusCm: 65 }
     };
 
-    // ================= 以下、共通システムロジック =================
+    // ================= 共通システムロジック =================
 
     function showView(viewId, title, headerHtml = '') {
         document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -341,7 +392,7 @@
     }
 
     function renderHome() {
-        showView('view-home', '射撃手簿 v26.06.09_3');
+        showView('view-home', '射撃手簿 v26.06.09_4');
         const listEl = document.getElementById('session-list');
         listEl.innerHTML = '';
         savedSessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(session => {
@@ -633,7 +684,7 @@
         if(!currentSession) return;
         const preset = TARGET_PRESETS[currentSession.basicInfo.targetType] || TARGET_PRESETS["a_300m"];
         
-        // 規定サイズから画面にピッタリ収まるようにスケールを自動調整
+        // 的の大きさ（displayRadiusCm）に合わせてスケールを自動計算
         const requiredRadiusCm = preset.displayRadiusCm || 65; 
         const minDimension = Math.min(canvas.width, canvas.height);
         const calculatedScale = (minDimension * 0.4) / (requiredRadiusCm * preset.ppc);
@@ -664,7 +715,7 @@
         
         const preset = TARGET_PRESETS[currentSession.basicInfo.targetType] || TARGET_PRESETS["a_300m"];
         
-        // 固有の描画関数を実行
+        // 指定された的の描画関数を呼び出し
         preset.draw(ctx, preset.ppc);
 
         // 弾痕の描画
