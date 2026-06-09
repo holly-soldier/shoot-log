@@ -77,7 +77,7 @@
 <body>
 
 <header>
-    <h1 id="header-title">射撃手簿 v26.06.10_2</h1>
+    <h1 id="header-title">射撃手簿 v26.06.10_3</h1>
     <div id="header-actions"></div>
 </header>
 
@@ -291,13 +291,14 @@
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 1.5;
 
-        // 円を胴体の中心にするため、座標(0,0)はそのままに外形を上に270mmシフト
-        const y_offset = -270; 
-        const y_sh = -100 + y_offset; 
-        const y_nk = -290.78 + y_offset; 
-        const y_head = -290 + y_offset; 
-        const y_head_top = -423.69 + y_offset; 
-        const y_bottom = 640 + y_offset; 
+        // 円を胴体の中心にするため、座標(0,0)はそのままに外形全体をシフト
+        // 7点圏の頂点(Y=-300)と肩のライン(y_sh)が同じ高さになるよう、y_offset を -200 に調整
+        const y_offset = -200; 
+        const y_sh = -100 + y_offset;          // -300 (肩の直線部の上端)
+        const y_nk = -290.78 + y_offset;       // -490.78
+        const y_head = -290 + y_offset;        // -490
+        const y_head_top = -423.69 + y_offset; // -623.69
+        const y_bottom = 640 + y_offset;       // 440
         
         const ang_sh = Math.atan2(190.78, 60); 
         const ang_hd = Math.atan2(133.69, 105); 
@@ -322,7 +323,7 @@
             { r: 50, h: 25 },
             { r: 100, h: 50 },
             { r: 150, h: 75 },
-            { r: 200, h: 100 }
+            { r: 200, h: 100 } // 7点圏: h(100) + r(200) で頂点はY=300(-300)となる
         ];
         rings.forEach(ring => {
             ctx.beginPath();
