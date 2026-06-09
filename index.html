@@ -77,7 +77,7 @@
 <body>
 
 <header>
-    <h1 id="header-title">射撃手簿 v26.06.09_2</h1>
+    <h1 id="header-title">射撃手簿 v26.06.09_3</h1>
     <div id="header-actions"></div>
 </header>
 
@@ -118,8 +118,11 @@
             <div class="form-group"><label>射距離(m)</label><input type="number" id="bi-distance"></div>
             <div class="form-group"><label>的の種類</label>
                 <select id="bi-target-type">
-                    <option value="circle">円形的 (120/80/40)</option>
-                    <option value="silhouette">シルエット的</option>
+                    <option value="a_300m">小黒点的 300m (A)</option>
+                    <option value="a_200m">小黒点的 200m (A)</option>
+                    <option value="a_100m">黒点的 100m (A)</option>
+                    <option value="a_25m">黒点的 25m (A)</option>
+                    <option value="e_target">膝的 (E的)</option>
                 </select>
             </div>
             <div class="form-group"><label>銃の種類</label><input type="text" id="bi-firearm"></div>
@@ -220,10 +223,115 @@
     let isTapInputMode = false;
     let editingShotIndex = -1; 
 
+    // ================= 寸法に基づく的の描画機能 =================
+    
+    // 小黒点的・黒点的 (A) を描画する関数
+    // d3, d4, d5: 各点圏の直径(cm) / f_w, f_h: F的象の幅と高さ(cm)
+    function drawATarget(ctx, ppc, d3, d4, d5, f_w, f_h) {
+        const r3 = d3 / 2, r4 = d4 / 2, r5 = d5 / 2;
+        
+        // F的象 (黒いシルエット部分)
+        // 規定により「5点圏の外側とF的象の底辺を一致させる」ため、baseY = r5
+        ctx.fillStyle = '#333'; // 弾痕を見やすくするため少し明るい黒
+        ctx.beginPath();
+        const baseY = r5 * ppc; 
+        const topY = baseY - (f_h * ppc);
+        const shoulderY = baseY - (f_h * 0.45 * ppc); // 肩の高さ（概算）
+        const headW = f_w * 0.4 * ppc;
+        const bodyW = f_w * ppc;
+        
+        ctx.moveTo(-bodyW/2, baseY);
+        ctx.lineTo(bodyW/2, baseY);
+        ctx.lineTo(bodyW/2, shoulderY);
+        ctx.quadraticCurveTo(headW/2, shoulderY, headW/2, topY + headW/2);
+        ctx.arc(0, topY + headW/2, headW/2, 0, Math.PI, true);
+        ctx.quadraticCurveTo(-headW/2, shoulderY, -bodyW/2, shoulderY);
+        ctx.fill();
+
+        // 3〜5点の円（見やすいように明るいグレーで描画）
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(0, 0, r5 * ppc, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, r4 * ppc, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, r3 * ppc, 0, Math.PI*2); ctx.stroke();
+
+        // 十字線
+        ctx.beginPath();
+        ctx.moveTo(0, -r3 * 1.1 * ppc); ctx.lineTo(0, r3 * 1.1 * ppc);
+        ctx.moveTo(-r3 * 1.1 * ppc, 0); ctx.lineTo(r3 * 1.1 * ppc, 0);
+        ctx.stroke();
+        
+        // 得点数字
+        ctx.fillStyle = '#ddd';
+        ctx.font = `${r5 * 0.4 * ppc}px sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText("5", 0, r5 * 0.4 * ppc);
+        ctx.fillText("4", 0, r4 * 0.8 * ppc);
+        ctx.fillText("3", 0, r3 * 0.8 * ppc);
+    }
+
+    // 膝的 (E的) を描画する関数
+    function drawETarget(ctx, ppc) {
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.5;
+        
+        // 規定寸法(cm)
+        const halfW = 24.5 * ppc; // 幅49cmの半分
+        const bottomY = 64 * ppc; // 10点中心から下へ64cm
+        const topY = -46 * ppc;   // 10点中心から上へ46cm (全高110cm)
+        const headHalfW = 10.5 * ppc; // 頭部幅21cmの半分
+        const shoulderY = -26 * ppc;  // 肩の高さ（概算）
+        
+        // 外形線
+        ctx.beginPath();
+        ctx.moveTo(-halfW, bottomY);
+        ctx.lineTo(halfW, bottomY);
+        ctx.lineTo(halfW, shoulderY + 10*ppc);
+        ctx.quadraticCurveTo(halfW, shoulderY, headHalfW, shoulderY - 10*ppc); // 右肩
+        ctx.lineTo(headHalfW, topY + headHalfW);
+        ctx.arc(0, topY + headHalfW, headHalfW, 0, Math.PI, true); // 頭の頂点
+        ctx.lineTo(-headHalfW, shoulderY - 10*ppc);
+        ctx.quadraticCurveTo(-halfW, shoulderY, -halfW, shoulderY + 10*ppc); // 左肩
+        ctx.closePath();
+        ctx.stroke();
+
+        // 7, 8, 9, 10点の円 (半径 20, 15, 10, 5 cm)
+        [20, 15, 10, 5].forEach(r => {
+            ctx.beginPath();
+            ctx.arc(0, 0, r * ppc, 0, Math.PI * 2);
+            ctx.stroke();
+        });
+
+        // 十字線
+        ctx.beginPath();
+        ctx.moveTo(0, -25 * ppc); ctx.lineTo(0, 25 * ppc);
+        ctx.moveTo(-25 * ppc, 0); ctx.lineTo(25 * ppc, 0);
+        ctx.stroke();
+    }
+
+    // 古いデータ互換用の円形的・シルエット的
+    function drawCircleTarget(ctx, ppc) {
+        [60, 40, 20].forEach(r => { ctx.beginPath(); ctx.arc(0, 0, r * ppc, 0, Math.PI * 2); ctx.stroke(); });
+        ctx.beginPath(); ctx.moveTo(0, -70 * ppc); ctx.lineTo(0, 70 * ppc); ctx.moveTo(-70 * ppc, 0); ctx.lineTo(70 * ppc, 0); ctx.stroke();
+    }
+    function drawSilhouetteTarget(ctx, ppc) {
+        ctx.strokeRect(-25 * ppc, -50 * ppc, 50 * ppc, 100 * ppc);
+        ctx.beginPath(); ctx.moveTo(0, -60 * ppc); ctx.lineTo(0, 60 * ppc); ctx.moveTo(-35 * ppc, 0); ctx.lineTo(35 * ppc, 0); ctx.stroke();
+    }
+
+    // プリセット定義 (displayRadiusCmは自動ズーム用の基準半径)
     const TARGET_PRESETS = {
-        "circle": { name: "円形的", ppc: 4, draw: drawCircleTarget },
-        "silhouette": { name: "シルエット的", ppc: 4, draw: drawSilhouetteTarget }
+        "a_300m": { name: "小黒点的 300m (A)", ppc: 4, draw: (ctx, ppc) => drawATarget(ctx, ppc, 120, 80, 40, 66, 48), displayRadiusCm: 65 },
+        "a_200m": { name: "小黒点的 200m (A)", ppc: 6, draw: (ctx, ppc) => drawATarget(ctx, ppc, 80, 53.2, 26.6, 44, 32), displayRadiusCm: 45 },
+        "a_100m": { name: "黒点的 100m (A)", ppc: 12, draw: (ctx, ppc) => drawATarget(ctx, ppc, 40, 26.6, 13.2, 22, 16), displayRadiusCm: 25 },
+        "a_25m":  { name: "黒点的 25m (A)", ppc: 40, draw: (ctx, ppc) => drawATarget(ctx, ppc, 10, 6.6, 3.2, 5.5, 4), displayRadiusCm: 6 },
+        "e_target": { name: "膝的 (E的)", ppc: 4, draw: (ctx, ppc) => drawETarget(ctx, ppc), displayRadiusCm: 65 },
+        // 過去データ互換用
+        "circle": { name: "円形的", ppc: 4, draw: (ctx, ppc) => drawCircleTarget(ctx, ppc), displayRadiusCm: 65 },
+        "silhouette": { name: "シルエット的", ppc: 4, draw: (ctx, ppc) => drawSilhouetteTarget(ctx, ppc), displayRadiusCm: 65 }
     };
+
+    // ================= 以下、共通システムロジック =================
 
     function showView(viewId, title, headerHtml = '') {
         document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -233,7 +341,7 @@
     }
 
     function renderHome() {
-        showView('view-home', '射撃手簿 v26.06.09_2');
+        showView('view-home', '射撃手簿 v26.06.09_3');
         const listEl = document.getElementById('session-list');
         listEl.innerHTML = '';
         savedSessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(session => {
@@ -252,7 +360,6 @@
         });
     }
 
-    // --- スコープ倍率入力の表示切替 ---
     function toggleScopeMag() {
         const sight = document.getElementById('bi-sight').value;
         document.getElementById('container-scope-mag').style.display = (sight === 'スコープ') ? 'block' : 'none';
@@ -267,7 +374,7 @@
             id: 'session_' + Date.now(),
             createdAt: new Date().toISOString(),
             title: `${localDateTime.split('T')[0].replace(/-/g, '')}_射撃記録`,
-            basicInfo: { dateTime: localDateTime, location: '', group: '', targetNum: '', weather: '', temp: '', wind: '', lighting: '', distance: '', targetType: 'circle', firearm: '', sight: 'アイアン', scopeMag: '' },
+            basicInfo: { dateTime: localDateTime, location: '', group: '', targetNum: '', weather: '', temp: '', wind: '', lighting: '', distance: '', targetType: 'a_300m', firearm: '', sight: 'アイアン', scopeMag: '' },
             groups: [ { id: 'G_' + Date.now(), name: 'G1', shots: [], mpi: {x:0, y:0} } ],
             evaluation: { goodPoints: '', improvementPoints: '', remarks: '' }
         };
@@ -311,7 +418,7 @@
         document.getElementById('bi-location').value = currentSession.basicInfo.location || '';
         document.getElementById('bi-group').value = currentSession.basicInfo.group || '';
         document.getElementById('bi-target-num').value = currentSession.basicInfo.targetNum || '';
-        document.getElementById('bi-target-type').value = currentSession.basicInfo.targetType || 'circle';
+        document.getElementById('bi-target-type').value = currentSession.basicInfo.targetType || 'a_300m';
         document.getElementById('bi-distance').value = currentSession.basicInfo.distance || '';
         document.getElementById('bi-firearm').value = currentSession.basicInfo.firearm || '';
         document.getElementById('bi-sight').value = currentSession.basicInfo.sight || 'アイアン';
@@ -325,10 +432,9 @@
         document.getElementById('eval-bad').value = currentSession.evaluation.improvementPoints || '';
         document.getElementById('eval-remarks').value = currentSession.evaluation.remarks || '';
         
-        toggleScopeMag(); // ドロップダウンの状態に応じて倍率枠の表示を切替
+        toggleScopeMag();
     }
 
-    // --- 【改修】メモリ消失防止のオートセーブ関数 ---
     function autoSaveCurrentSession() {
         if (!currentSession) return;
         const existingIndex = savedSessions.findIndex(s => s.id === currentSession.id);
@@ -358,7 +464,6 @@
         if(!currentGroupId) currentGroupId = currentSession.groups[0].id;
         editingShotIndex = -1; resetInputState();
         
-        // メイン画面へ遷移する瞬間に、これまでの入力をすべてローカル保存する（オートセーブ）
         autoSaveCurrentSession();
         
         showView('view-main', '結果入力', `
@@ -375,12 +480,10 @@
         renderHome();
     }
 
-    // ================= データ・UI更新ロジック =================
     function updateMainUI() {
         const group = currentSession.groups.find(g => g.id === currentGroupId);
         const b = currentSession.basicInfo;
         
-        // --- 【改修】キャンバス余白の基本情報更新（射群、天気、スコープ倍率などを追加） ---
         document.getElementById('ov-date').textContent = b.dateTime ? b.dateTime.replace('T', ' ') : '';
         document.getElementById('ov-loc').textContent = b.location || '';
         document.getElementById('ov-group-target').textContent = [b.group, b.targetNum].filter(Boolean).join(' / ');
@@ -437,7 +540,7 @@
         const newName = prompt("新しいグループ名を入力してください:", group.name);
         if (newName && newName.trim() !== "") {
             group.name = newName.trim();
-            updateMainUI(); autoSaveCurrentSession(); // 変更時にオートセーブ
+            updateMainUI(); autoSaveCurrentSession();
         }
     }
     
@@ -471,7 +574,7 @@
         resetInputState();
         calcMPI(group);
         updateMainUI();
-        autoSaveCurrentSession(); // 弾痕追加時にもオートセーブ
+        autoSaveCurrentSession(); 
     }
 
     function editShot(index) {
@@ -511,7 +614,7 @@
         currentSession.evaluation.goodPoints = document.getElementById('eval-good').value;
         currentSession.evaluation.improvementPoints = document.getElementById('eval-bad').value;
         currentSession.evaluation.remarks = document.getElementById('eval-remarks').value;
-        autoSaveCurrentSession(); // 評価入力時にもオートセーブ
+        autoSaveCurrentSession();
     }
 
     // ================= Canvas & 描画ロジック =================
@@ -528,9 +631,10 @@
 
     function resetCanvasView() {
         if(!currentSession) return;
-        const preset = TARGET_PRESETS[currentSession.basicInfo.targetType] || TARGET_PRESETS["circle"];
+        const preset = TARGET_PRESETS[currentSession.basicInfo.targetType] || TARGET_PRESETS["a_300m"];
         
-        const requiredRadiusCm = 65; 
+        // 規定サイズから画面にピッタリ収まるようにスケールを自動調整
+        const requiredRadiusCm = preset.displayRadiusCm || 65; 
         const minDimension = Math.min(canvas.width, canvas.height);
         const calculatedScale = (minDimension * 0.4) / (requiredRadiusCm * preset.ppc);
 
@@ -547,20 +651,6 @@
         btn.className = isTapInputMode ? 'active-mode' : '';
     }
 
-    function drawCircleTarget(ppc) {
-        [60, 40, 20].forEach(r => {
-            ctx.beginPath(); ctx.arc(0, 0, r * ppc, 0, Math.PI * 2); ctx.stroke();
-        });
-        ctx.beginPath(); ctx.moveTo(0, -70 * ppc); ctx.lineTo(0, 70 * ppc);
-        ctx.moveTo(-70 * ppc, 0); ctx.lineTo(70 * ppc, 0); ctx.stroke();
-    }
-
-    function drawSilhouetteTarget(ppc) {
-        ctx.strokeRect(-25 * ppc, -50 * ppc, 50 * ppc, 100 * ppc);
-        ctx.beginPath(); ctx.moveTo(0, -60 * ppc); ctx.lineTo(0, 60 * ppc);
-        ctx.moveTo(-35 * ppc, 0); ctx.lineTo(35 * ppc, 0); ctx.stroke();
-    }
-
     function drawCanvas() {
         if(!currentSession) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -572,17 +662,16 @@
         ctx.translate(transform.offsetX, transform.offsetY);
         ctx.scale(transform.scale, transform.scale);
         
-        const preset = TARGET_PRESETS[currentSession.basicInfo.targetType] || TARGET_PRESETS["circle"];
-        const ppc = preset.ppc;
+        const preset = TARGET_PRESETS[currentSession.basicInfo.targetType] || TARGET_PRESETS["a_300m"];
+        
+        // 固有の描画関数を実行
+        preset.draw(ctx, preset.ppc);
 
-        ctx.lineWidth = 1 / transform.scale;
-        ctx.strokeStyle = '#333';
-        preset.draw(ppc);
-
+        // 弾痕の描画
         currentSession.groups.forEach(group => {
             const isActive = (group.id === currentGroupId);
             group.shots.forEach((s, idx) => {
-                const px = s.x * ppc, py = -s.y * ppc;
+                const px = s.x * preset.ppc, py = -s.y * preset.ppc;
                 ctx.beginPath(); ctx.arc(px, py, 4 / transform.scale, 0, Math.PI * 2);
                 
                 let pointColor = 'rgba(150,150,150,0.5)';
@@ -596,7 +685,7 @@
                 }
             });
             if(isActive && group.shots.length > 0) {
-                const mx = group.mpi.x * ppc, my = -group.mpi.y * ppc, sz = 6 / transform.scale;
+                const mx = group.mpi.x * preset.ppc, my = -group.mpi.y * preset.ppc, sz = 6 / transform.scale;
                 ctx.beginPath(); ctx.moveTo(mx-sz, my-sz); ctx.lineTo(mx+sz, my+sz);
                 ctx.moveTo(mx+sz, my-sz); ctx.lineTo(mx-sz, my+sz);
                 ctx.strokeStyle = 'blue'; ctx.lineWidth = 2 / transform.scale; ctx.stroke();
@@ -662,7 +751,6 @@
         const env = [b.weather, b.temp ? b.temp+'℃' : '', b.wind ? b.wind+'m/s' : ''].filter(Boolean).join(' / ');
         document.getElementById('p-env').textContent = env || '---';
         
-        // 印刷側にも倍率情報を反映
         let printSightStr = b.sight || '';
         if (printSightStr === 'スコープ' && b.scopeMag) printSightStr += ` (${b.scopeMag}x)`;
         const equip = [b.distance ? b.distance+'m' : '', b.firearm, printSightStr].filter(Boolean).join(' / ');
@@ -700,12 +788,11 @@
         setTimeout(() => { window.print(); }, 300);
     }
 
-    // ================= エクスポート / インポート機能 =================
+    // ================= エクスポート / インポート =================
     function exportJSON() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedSessions, null, 2));
         const a = document.createElement('a'); a.href = dataStr; a.download = "shoot_log_backup.json"; a.click();
     }
-
     function importJSON(event) {
         const file = event.target.files[0];
         if(!file) return;
@@ -726,7 +813,6 @@
         };
         reader.readAsText(file);
     }
-
     function exportCSV() {
         let csv = "SessionID,Title,Date,Location,TargetNum,Group,ShotNo,X_cm,Y_cm,MPI_X,MPI_Y\n";
         savedSessions.forEach(session => {
@@ -741,7 +827,6 @@
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "shoot_log_export.csv"; a.click();
     }
 
-    // PWA Service Worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').then(reg => {
             reg.onupdatefound = () => {
