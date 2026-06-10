@@ -59,6 +59,36 @@
         .data-row:last-child { border-bottom: none; }
         .mpi-row { font-weight: bold; color: var(--accent); background: #fdf2f2; padding: 10px; border-radius: 4px; margin-top: 5px; }
 
+        /* ================= 夜間モード用デザイン ================= */
+        body.dark-mode {
+            --bg: #121212;
+            --border: #444;
+            color: #e0e0e0;
+        }
+        body.dark-mode .session-card,
+        body.dark-mode .form-section,
+        body.dark-mode .data-list,
+        body.dark-mode #canvas-container {
+            background: #1e1e1e;
+            border-color: #333;
+        }
+        body.dark-mode input,
+        body.dark-mode select,
+        body.dark-mode textarea {
+            background: #2c2c2c;
+            color: #e0e0e0;
+            border-color: #555;
+            color-scheme: dark;
+        }
+        body.dark-mode .session-card h3 { color: #fff; }
+        body.dark-mode .session-card p,
+        body.dark-mode .form-group label { color: #bbb; }
+        body.dark-mode .data-row { border-bottom: 1px solid #333; }
+        body.dark-mode .mpi-row { background: #3a2a2a; }
+        body.dark-mode .canvas-info { background: rgba(30, 30, 30, 0.85); color: #ddd; }
+        body.dark-mode .group-tab { background: #333; color: #bbb; }
+        body.dark-mode canvas { filter: brightness(0.85); } /* 的の白地が眩しすぎないよう調整 */
+
         /* ================= 印刷用レイアウト ================= */
         #print-area { display: none; }
         @media print {
@@ -77,7 +107,10 @@
 <body>
 <header>
     <h1 id="header-title">射撃手簿</h1>
-    <div id="header-actions"></div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <button id="btn-dark-mode" onclick="toggleDarkMode()" style="background: transparent; color: white; font-size: 1.2rem; padding: 0; margin-right: 5px;">🌙</button>
+        <div id="header-actions"></div>
+    </div>
 </header>
 
 <div id="view-home" class="view active">
@@ -213,7 +246,7 @@
 
 <script>
     // ▼ 今後バージョンを更新するときは、ここの文字を変えるだけでOK！ ▼
-    const APP_VERSION = "v26.06.10_5";
+    const APP_VERSION = "v26.06.10_6";
     
     // タイトルの装飾設定（ここも今後は変更不要）
     const APP_TITLE = `射撃手簿 <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); font-weight: normal; margin-left: 5px;">${APP_VERSION}</span>`;
@@ -900,6 +933,29 @@
             el.addEventListener('input', () => autoResizeTextarea(el));
         }
     });
+    // ================= 夜間モード（ダークモード）の制御 =================
+    let isDarkMode = localStorage.getItem('shootLogDarkMode') === 'true';
+
+    function toggleDarkMode() {
+        isDarkMode = !isDarkMode;
+        localStorage.setItem('shootLogDarkMode', isDarkMode);
+        applyDarkMode();
+    }
+
+    function applyDarkMode() {
+        const btn = document.getElementById('btn-dark-mode');
+        if (isDarkMode) {
+            document.body.classList.add('dark-mode');
+            if (btn) btn.textContent = '☀️';
+        } else {
+            document.body.classList.remove('dark-mode');
+            if (btn) btn.textContent = '🌙';
+        }
+    }
+
+    // 起動時に現在の設定を読み込んで反映
+    applyDarkMode();
+
     renderHome();
 </script>
 </body>
