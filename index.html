@@ -75,9 +75,8 @@
     </style>
 </head>
 <body>
-    
 <header>
-    <h1 id="header-title">射撃手簿 <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); font-weight: normal; margin-left: 5px;">v26.06.10</span></h1>
+    <h1 id="header-title">射撃手簿</h1>
     <div id="header-actions"></div>
 </header>
 
@@ -213,6 +212,12 @@
 </div>
 
 <script>
+    // ▼ 今後バージョンを更新するときは、ここの文字を変えるだけでOK！ ▼
+    const APP_VERSION = "v26.06.10_3";
+    
+    // タイトルの装飾設定（ここも今後は変更不要）
+    const APP_TITLE = `射撃手簿 <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); font-weight: normal; margin-left: 5px;">${APP_VERSION}</span>`;
+
     let savedSessions = JSON.parse(localStorage.getItem('shootLogSessions')) || [];
     let currentSession = null;
     let currentGroupId = null;
@@ -378,8 +383,9 @@
     }
 
     function renderHome() {
-        // ↓タイトルの文字列をHTML付きのものに変更します
-        showView('view-home', '射撃手簿 <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); font-weight: normal; margin-left: 5px;">v26.06.10</span>');
+            function renderHome() {
+        // 直接文字を書くのではなく、上で定義した APP_TITLE を読み込ませる
+        showView('view-home', APP_TITLE);
         
         const listEl = document.getElementById('session-list');
         listEl.innerHTML = '';
