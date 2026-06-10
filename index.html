@@ -213,7 +213,7 @@
 
 <script>
     // ▼ 今後バージョンを更新するときは、ここの文字を変えるだけでOK！ ▼
-    const APP_VERSION = "v26.06.10_3";
+    const APP_VERSION = "v26.06.10_5";
     
     // タイトルの装飾設定（ここも今後は変更不要）
     const APP_TITLE = `射撃手簿 <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); font-weight: normal; margin-left: 5px;">${APP_VERSION}</span>`;
@@ -477,6 +477,9 @@
         document.getElementById('eval-remarks').value = currentSession.evaluation.remarks || '';
         
         toggleScopeMag();
+        setTimeout(() => {
+            ['eval-good', 'eval-bad', 'eval-remarks'].forEach(id => autoResizeTextarea(document.getElementById(id)));
+        }, 50);
     }
 
     function autoSaveCurrentSession() {
@@ -653,12 +656,24 @@
         const sumY = group.shots.reduce((sum, s) => sum + s.y, 0);
         group.mpi = { x: Math.round((sumX/group.shots.length)*10)/10, y: Math.round((sumY/group.shots.length)*10)/10 };
     }
-
     function saveEvaluation() {
         currentSession.evaluation.goodPoints = document.getElementById('eval-good').value;
         currentSession.evaluation.improvementPoints = document.getElementById('eval-bad').value;
         currentSession.evaluation.remarks = document.getElementById('eval-remarks').value;
+        
+        // 入力時に高さを自動調整する処理を呼び出す
+        ['eval-good', 'eval-bad', 'eval-remarks'].forEach(id => {
+            autoResizeTextarea(document.getElementById(id));
+        });
+        
         autoSaveCurrentSession();
+    }
+
+    // 高さを自動調整する専用の関数
+    function autoResizeTextarea(el) {
+        if (!el) return;
+        el.style.height = 'auto'; // 一度高さをリセット
+        el.style.height = el.scrollHeight + 'px'; // 内包する文字の高さ（スクロール領域）に合わせて設定
     }
 
     // ================= Canvas & 描画ロジック =================
@@ -878,7 +893,13 @@
             };
         });
     }
-
+    // 入力欄（良好・改善・備考）で文字が打たれたら、リアルタイムで高さを広げる設定
+    ['eval-good', 'eval-bad', 'eval-remarks'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', () => autoResizeTextarea(el));
+        }
+    });
     renderHome();
 </script>
 </body>
