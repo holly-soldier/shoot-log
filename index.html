@@ -59,6 +59,21 @@
         .data-row:last-child { border-bottom: none; }
         .mpi-row { font-weight: bold; color: var(--accent); background: #fdf2f2; padding: 10px; border-radius: 4px; margin-top: 5px; }
 
+        /* ================= 印刷用レイアウト ================= */
+        #print-area { display: none; }
+        @media print {
+            @page { margin: 15mm; }
+            /* body.dark-modeの状態でも印刷時は強制的に白黒にする */
+            body, body.dark-mode { background: white !important; height: auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #000 !important; }
+            header, #view-home, #view-basic-info, #view-main { display: none !important; }
+            #print-area, #print-area * { display: block !important; width: 100%; color: #000 !important; }
+            .print-label { font-weight: bold; font-size: 0.85rem; color: #555 !important; }
+            .print-val { font-size: 1rem; border-bottom: 1px solid #ddd !important; padding-bottom: 2px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.9rem; text-align: center; }
+            th, td { border: 1px solid #333 !important; padding: 6px; }
+            th { background: #eee !important; }
+        }
+
         /* ================= 夜間モード用デザイン ================= */
         body.dark-mode {
             --bg: #121212;
@@ -86,22 +101,14 @@
         body.dark-mode .data-row { border-bottom: 1px solid #333; }
         body.dark-mode .mpi-row { background: #3a2a2a; }
         body.dark-mode .canvas-info { background: rgba(30, 30, 30, 0.85); color: #ddd; }
+        
+        /* 非アクティブなタブ */
         body.dark-mode .group-tab { background: #333; color: #bbb; }
+        /* 選択中（アクティブ）のタブ（夜間でも目立つブルーに設定） */
+        body.dark-mode .group-tab.active { background: #4a90e2; color: #fff; }
+        
         body.dark-mode canvas { filter: brightness(0.85); } /* 的の白地が眩しすぎないよう調整 */
-
-        /* ================= 印刷用レイアウト ================= */
-        #print-area { display: none; }
-        @media print {
-            @page { margin: 15mm; }
-            body { background: white; height: auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #000; }
-            header, #view-home, #view-basic-info, #view-main { display: none !important; }
-            #print-area { display: block !important; width: 100%; }
-            .print-label { font-weight: bold; font-size: 0.85rem; color: #555; }
-            .print-val { font-size: 1rem; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.9rem; text-align: center; }
-            th, td { border: 1px solid #333; padding: 6px; }
-            th { background: #eee; }
-        }
+        
     </style>
 </head>
 <body>
@@ -246,7 +253,7 @@
 
 <script>
     // ▼ 今後バージョンを更新するときは、ここの文字を変えるだけでOK！ ▼
-    const APP_VERSION = "v26.06.10_6";
+    const APP_VERSION = "v26.06.10_7";
     
     // タイトルの装飾設定（ここも今後は変更不要）
     const APP_TITLE = `射撃手簿 <span style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); font-weight: normal; margin-left: 5px;">${APP_VERSION}</span>`;
