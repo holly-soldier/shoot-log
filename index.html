@@ -63,13 +63,14 @@
         #print-area { display: none; }
         @media print {
             @page { margin: 15mm; }
-            /* body.dark-modeの状態でも印刷時は強制的に白黒にする */
-            body, body.dark-mode { background: white !important; height: auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #000 !important; }
+            body, body.dark-mode { background: white !important; height: auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #000; }
             header, #view-home, #view-basic-info, #view-main { display: none !important; }
-            #print-area, #print-area * { display: block !important; width: 100%; color: #000 !important; }
+            #print-area { display: block !important; width: 100%; }
+            /* 要素を表示するが、色の強制上書きは避ける */
+            #print-area * { display: block !important; }
             .print-label { font-weight: bold; font-size: 0.85rem; color: #555 !important; }
-            .print-val { font-size: 1rem; border-bottom: 1px solid #ddd !important; padding-bottom: 2px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.9rem; text-align: center; }
+            .print-val { font-size: 1rem; border-bottom: 1px solid #ddd !important; padding-bottom: 2px; color: #000 !important; }
+            table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.9rem; text-align: center; color: #000 !important; }
             th, td { border: 1px solid #333 !important; padding: 6px; }
             th { background: #eee !important; }
         }
@@ -749,7 +750,8 @@
         btn.className = isTapInputMode ? 'active-mode' : '';
     }
 
-    function drawCanvas() {
+    // キャンバスの描画 (引数 isPrintMode で通常時と印刷時を切り替え)
+    function drawCanvas(isPrintMode = false) {
         if(!currentSession) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
@@ -763,27 +765,53 @@
         const preset = TARGET_PRESETS[currentSession.basicInfo.targetType] || TARGET_PRESETS["a_300m"];
         preset.draw(ctx, preset.ppc);
 
-        currentSession.groups.forEach(group => {
+        // 印刷用のカラーパレット（赤、青、緑、オレンジ、紫、水色）
+        const printColors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
+
+        currentSession.groups.forEach((group, gIdx) => {
             const isActive = (group.id === currentGroupId);
+            const groupColor = printColors[gIdx % printColors.length]; // 印刷用の色
+
+            // 弾痕の描画
             group.shots.forEach((s, idx) => {
                 const px = s.x * preset.ppc, py = -s.y * preset.ppc;
                 ctx.beginPath(); ctx.arc(px, py, 4 / transform.scale, 0, Math.PI * 2);
                 
-                let pointColor = 'rgba(150,150,150,0.5)';
-                if (isActive) pointColor = (editingShotIndex === idx) ? '#f39c12' : 'red';
+                let pointColor;
+                if (isPrintMode) {
+                    pointColor = groupColor; // 印刷時はグループごとの色
+                } else {
+                    pointColor = 'rgba(150,150,150,0.5)';
+                    if (isActive) pointColor = (editingShotIndex === idx) ? '#f39c12' : 'red';
+                }
                 
                 ctx.fillStyle = pointColor;
                 ctx.fill();
-                if(isActive) {
-                    ctx.fillStyle = '#000'; ctx.font = `${12/transform.scale}px sans-serif`;
+                
+                // 数字の描画（印刷時は全グループに数字を振る）
+                if(isActive || isPrintMode) {
+                    ctx.fillStyle = isPrintMode ? '#333' : '#000'; 
+                    ctx.font = `bold ${12/transform.scale}px sans-serif`;
                     ctx.fillText(idx+1, px+(6/transform.scale), py-(6/transform.scale));
                 }
             });
-            if(isActive && group.shots.length > 0) {
+
+            // MPI（平均弾着点）の描画
+            if((isActive || isPrintMode) && group.shots.length > 0) {
                 const mx = group.mpi.x * preset.ppc, my = -group.mpi.y * preset.ppc, sz = 6 / transform.scale;
                 ctx.beginPath(); ctx.moveTo(mx-sz, my-sz); ctx.lineTo(mx+sz, my+sz);
                 ctx.moveTo(mx+sz, my-sz); ctx.lineTo(mx-sz, my+sz);
-                ctx.strokeStyle = 'blue'; ctx.lineWidth = 2 / transform.scale; ctx.stroke();
+                
+                ctx.strokeStyle = isPrintMode ? groupColor : 'blue'; 
+                ctx.lineWidth = 2 / transform.scale; ctx.stroke();
+                
+                // 印刷時のみ、MPIの横にグループ名を印字する
+                if (isPrintMode) {
+                    ctx.fillStyle = groupColor;
+                    ctx.font = `bold ${14/transform.scale}px sans-serif`;
+                    ctx.textAlign = 'left';
+                    ctx.fillText(group.name + " MPI", mx + (10/transform.scale), my + (10/transform.scale));
+                }
             }
         });
         ctx.restore();
@@ -830,8 +858,6 @@
         }
     });
     canvas.addEventListener('touchend', () => isDragging = false);
-
-    // ================= 印刷機能 =================
     function executePrint() {
         if(!currentSession) return;
         saveEvaluation(); 
@@ -855,25 +881,36 @@
         const s_ox = transform.offsetX;
         const s_oy = transform.offsetY;
         resetCanvasView();
+        
+        // ▼ 印刷モード(全グループ色分け)で描画してから画像化 ▼
+        drawCanvas(true);
         document.getElementById('p-img').src = canvas.toDataURL('image/jpeg', 1.0);
         
+        // ▼ 視点を戻し、通常モードで再描画 ▼
         transform.scale = s_scale;
         transform.offsetX = s_ox;
         transform.offsetY = s_oy;
-        drawCanvas();
+        drawCanvas(false);
         
-        const group = currentSession.groups.find(g => g.id === currentGroupId);
-        let tableHtml = `<div style="font-weight:bold; margin:10px 0 5px; text-align:left;">【${group.name}】着弾データ</div>`;
-        tableHtml += `<table><tr><th>No.</th><th>X (cm)</th><th>Y (cm)</th></tr>`;
-        group.shots.forEach((s, i) => {
-            tableHtml += `<tr><td>${i+1}</td><td>${s.x}</td><td>${s.y}</td></tr>`;
+        // ▼ 全グループのデータをそれぞれ表にして出力 ▼
+        const printColors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
+        let tableHtml = '';
+        
+        currentSession.groups.forEach((group, gIdx) => {
+            const groupColor = printColors[gIdx % printColors.length];
+            // 各グループの見出しをキャンバスと同じ色にして凡例代わりにする
+            tableHtml += `<div style="font-weight:bold; margin:15px 0 5px; text-align:left; color:${groupColor}; border-bottom:2px solid ${groupColor};">【${group.name}】 着弾データ</div>`;
+            tableHtml += `<table><tr><th>No.</th><th>X (cm)</th><th>Y (cm)</th></tr>`;
+            group.shots.forEach((s, i) => {
+                tableHtml += `<tr><td>${i+1}</td><td>${s.x}</td><td>${s.y}</td></tr>`;
+            });
+            if(group.shots.length > 0) {
+                tableHtml += `<tr style="font-weight:bold; background:#f4f4f4;"><td>MPI</td><td>${group.mpi.x}</td><td>${group.mpi.y}</td></tr>`;
+            } else {
+                tableHtml += `<tr><td colspan="3">データなし</td></tr>`;
+            }
+            tableHtml += `</table>`;
         });
-        if(group.shots.length > 0) {
-            tableHtml += `<tr style="font-weight:bold; background:#f4f4f4;"><td>MPI</td><td>${group.mpi.x}</td><td>${group.mpi.y}</td></tr>`;
-        } else {
-            tableHtml += `<tr><td colspan="3">データなし</td></tr>`;
-        }
-        tableHtml += `</table>`;
         document.getElementById('p-shots').innerHTML = tableHtml;
         
         document.getElementById('p-good').textContent = document.getElementById('eval-good').value || '---';
